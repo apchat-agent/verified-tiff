@@ -83,3 +83,27 @@ fn copy_runs_wrap_overlap_and_input_windows(){
     }}
 }
 
+#[test]
+fn period_two_matches_preserve_phase_across_ring_and_output_boundaries(){
+    let wire=include_bytes!("fixtures/period-two.zlib");
+    let mut expected=vec![127];expected.extend((0..33284).map(|i|if i%2==0{31}else{0}));
+    let fee=2_000_000;let mut scalar=Inflater::new(wire,expected.len()).unwrap();
+    let mut budget=Budget{remaining:fee};let (mut at,mut bit)=(2,0);let mut reference=Vec::new();
+    loop {
+        let (a,b,event,byte)=scalar.step(wire,at,bit,wire.len()-4,&mut budget).unwrap();at=a;bit=b;
+        if event==1{reference.push(byte);}if event==2{break;}
+    }
+    assert_eq!(reference,expected);let charged=2*(fee-budget.remaining);
+    for chunk in [1,3,255,256,257,32769] {
+        let (actual,work)=batched(wire,expected.len(),1031,chunk,charged).unwrap();
+        assert_eq!(actual,expected);assert_eq!(work,charged);
+        assert_eq!(batched(wire,expected.len(),1031,chunk,charged-1),Err(Error::Limit));
+    }
+    for needed in [1,32769,expected.len()] {
+        let mut out=vec![0xa5;needed+13];let fee=verified_tiff::native::work_limit(wire.len(),expected.len()).unwrap();
+        let mut budget=Budget{remaining:fee};
+        verified_tiff::native::decode(wire,8,1,needed,expected.len(),&mut out,&mut budget).unwrap();
+        assert_eq!(&out[..needed],&expected[..needed]);assert_eq!(budget.remaining,0);
+        assert!(out[needed..].iter().all(|b|*b==0xa5));
+    }
+}
