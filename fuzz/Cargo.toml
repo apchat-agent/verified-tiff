@@ -1,0 +1,21 @@
+[package]
+name = "verified-tiff-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+libfuzzer-sys = "0.4"
+verified-tiff = { path = ".." }
+
+[[bin]]
+name = "inspect_decode"
+path = "fuzz_targets/inspect_decode.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+
+[package.metadata]
+cargo-fuzz = true
