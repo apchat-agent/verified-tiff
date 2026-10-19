@@ -28,3 +28,10 @@ units in `fuzz/README.md`). Each reproduces its class with
   documented policy of reading known tags independently of the file's stored
   type (docs/metadata-contracts.md) and inverts for MINISWHITE. The
   comparison domain is narrowed in the harness, not the adapter.
+- `libtiff-crash-unsupported-codec.tif` — a compression tag (65281) whose
+  strips crash pinned libtiff 4.7.1 itself: after failed strip reads of the
+  unsupported codec, the next TIFFReadDirectory SEGVs in
+  TIFFReadDirectoryFindFieldInfo (tif_dirread.c:5256; repro
+  `target/fuzz-c/diff_decode tests/fixtures/diff-triage/libtiff-crash-unsupported-codec.tif -runs=1 -detect_leaks=0`,
+  exit 139). libtiff is the test-only oracle; the harness counts such
+  directories in skipped_unsupported.
