@@ -19,4 +19,8 @@ bash scripts/build-compat.sh >"$out/build-compat.log" 2>&1
 "$compiler" "${common[@]}" -fsanitize=fuzzer,address,undefined -c target/compat/stubs.c -o "$out/stubs.o"
 "$compiler" "${common[@]}" -fsanitize=fuzzer,address,undefined fuzz-c/harness.c "$out/tiff_compat.o" "$out/stubs.o" "$lib" -ldl -lpthread -lm -o "$out/inspect_decode_c"
 "$compiler" "${common[@]}" -fsanitize=address,undefined -DREPLAY_MAIN fuzz-c/harness.c "$out/tiff_compat.o" "$out/stubs.o" "$lib" -ldl -lpthread -lm -o "$out/replay_c"
-echo "C fuzz targets: $out/inspect_decode_c $out/replay_c"
+reflib=.tools/tiff-4.7.1/libtiff/.libs/libtiff.a
+"$compiler" "${common[@]}" -fsanitize=fuzzer,address,undefined fuzz-c/diffharness.c "$reflib" \
+  .tools/webp/lib/libwebp.a .tools/webp/lib/libsharpyuv.a .tools/jpeg/lib/libjpeg.a \
+  -ldl -lpthread -lz -lm -o "$out/diff_decode"
+echo "C fuzz targets: $out/inspect_decode_c $out/replay_c $out/diff_decode"
