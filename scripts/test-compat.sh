@@ -58,7 +58,7 @@ bash scripts/test-shim-hardening.sh
 
 # Adapter fuzz regressions and the ordinary replay runner are also sanitizer gates.
 for regression in cycle chop byteorder; do
-  "$compiler" -std=c11 -O2 -g "${extra[@]}" -Icompat/include "compat/tests/${regression}_regression.c" -L"$output" -Wl,-rpath,"$output" -ltiff -o "$output/$regression-regression"
+  "$compiler" -std=c11 -O2 -g -Wall -Wextra -Werror "${extra[@]}" -Icompat/include "compat/tests/${regression}_regression.c" -L"$output" -Wl,-rpath,"$output" -ltiff -o "$output/$regression-regression"
 done
 "$output/cycle-regression" tests/fixtures/fuzz-regressions-c/case-0003-cyclic-ifd.tif
 "$output/chop-regression"
@@ -67,5 +67,9 @@ done
 "$output/chop-libtiff"
 .tools/tiff-4.7.1/libtool --mode=link --tag=CC "$compiler" -std=c11 -O2 -DREFERENCE_LIB -I.tools/tiff-4.7.1/libtiff compat/tests/byteorder_regression.c .tools/tiff-4.7.1/libtiff/libtiff.la -o "$output/byteorder-libtiff"
 "$output/byteorder-libtiff"
-"$compiler" -std=c11 -O2 -g "${extra[@]}" -DREPLAY_MAIN -Icompat/include fuzz-c/harness.c -L"$output" -Wl,-rpath,"$output" -ltiff -o "$output/replay_c"
-"$output/replay_c" tests/fixtures/fuzz-regressions-c
+"$compiler" -std=c11 -O2 -g -Wall -Wextra -Werror "${extra[@]}" -DREPLAY_MAIN -Icompat/include fuzz-c/harness.c -L"$output" -Wl,-rpath,"$output" -ltiff -o "$output/replay_c"
+# The replay result line is asserted so the corpus replay is a coverage gate,
+# not only a crash gate; update the expected counts with the corpus.
+replay_out=$("$output/replay_c" tests/fixtures/fuzz-regressions-c)
+printf '%s\n' "$replay_out"
+printf '%s\n' "$replay_out" | grep -q 'C fuzz replay: files=4 errored_or_rejected=2 clean_accepted=2'

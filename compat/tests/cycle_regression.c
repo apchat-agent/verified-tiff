@@ -1,5 +1,10 @@
 /* A cyclic IFD chain must end the sequential directory walk like libtiff's
- * loop detection, not walk bounded-max_directories revisited directories. */
+ * loop detection, not walk bounded-max_directories revisited directories.
+ * This regression is adapter-only (verified_tiff.h): the libtiff semantics it
+ * cites — tif_dirread.c:5696 checking offset and directory number together,
+ * tif_dir.c:2057 permitting the same offset at the same directory number —
+ * rest on those pinned-source lines, and the same binary is not run against
+ * libtiff. */
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>

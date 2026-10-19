@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
     return 2;
   }
   qsort(names, count, sizeof(*names), cmp_names);
-  size_t errored = 0, clean_accepted = 0, case_files = 0, case_errored = 0;
+  size_t errored = 0, clean_accepted = 0;
   for (size_t i = 0; i < count; i++) {
     FILE *f = fopen(names[i], "rb");
     assert(f);
@@ -199,16 +199,10 @@ int main(int argc, char **argv) {
     assert(data);
     assert(fread(data, 1, (size_t)length, f) == (size_t)length);
     fclose(f);
-    int err = run_input(data, (size_t)length);
-    if (err)
+    if (run_input(data, (size_t)length))
       errored++;
     else
       clean_accepted++;
-    if (strstr(names[i], "case-")) {
-      case_files++;
-      if (err)
-        case_errored++;
-    }
     free(data);
     free(names[i]);
   }

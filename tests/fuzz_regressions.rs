@@ -1,5 +1,5 @@
 //! Permanent replay: every minimized fuzz regression must pass through the
-//! step-1 oracle cleanly (accepted without violation, or rejected without a
+//! fuzz oracle cleanly (accepted without violation, or rejected without a
 //! panic), and the designated known-bad cases must be rejected outright.
 use verified_tiff::Limits;
 
