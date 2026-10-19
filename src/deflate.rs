@@ -242,7 +242,7 @@ impl Cursor {
         if self.pending==256 {self.a=self.a%65521;self.b=self.b%65521;self.pending=0;}
     }
     // The caller bounds a run to the source/destination ring tails. Overlap is
-    // split at the distance; distance one can fill the whole bounded run.
+    // split at the distance; periods one and two fill the whole bounded run.
     pub(super) fn copy_run(&mut self,s:&[u8],cap:usize,output:&mut[u8])
         requires old(self).valid(s@,cap as int),
             0<old(output).len()<=256-old(self).pending,
@@ -251,7 +251,7 @@ impl Cursor {
             old(self).mode==1 || old(self).mode==3,
             old(self).mode==1 ==> old(self).bits.bit==0 && old(output).len()<=old(self).bits.end-old(self).bits.at,
             old(self).mode==3 ==> 0<old(self).distance<=old(self).produced && old(self).distance<=old(self).window &&
-                (old(self).distance==1 || (old(output).len()<=old(self).distance && old(output).len()<=32768-(old(self).produced-old(self).distance)%32768)),
+                (old(self).distance<=2 || (old(output).len()<=old(self).distance && old(output).len()<=32768-(old(self).produced-old(self).distance)%32768)),
         ensures final(self).valid(s@,cap as int),final(self).end()==old(self).end(),
             final(output).len()==old(output).len(),
             final(self).model()==run_model(old(self).model(),final(output)@,final(output).len() as nat),
@@ -273,6 +273,14 @@ impl Cursor {
                     invariant i<=n,output.len()==n,forall|k:int| 0<=k<i ==> output@[k]==byte,
                     decreases n-i,
                 {output[i]=byte;i=i+1;}
+            } else if self.distance==2 {
+                let first=self.ring[source];let second=self.ring[(base-1)%32768];
+                let mut i=0usize;
+                while i<n
+                    invariant i<=n,output.len()==n,
+                        forall|k:int| 0<=k<i ==> output@[k]==(if k%2==0 {first} else {second}),
+                    decreases n-i,
+                {output[i]=if i%2==0 {first} else {second};i=i+1;}
             } else {
                 copy_byte_run(&self.ring,source,output,0,n,false);
                 assert forall|i:int| 0<=i<n implies output@[i]==self.ring@[source as int+i] by {
@@ -292,6 +300,17 @@ impl Cursor {
                     if self.distance==1 {
                         assert(output@[i]==v.bytes[base as int-1]);
                         if i>0 {assert(current.bytes[base as int+i-1]==output@[i-1]);}
+                    } else if self.distance==2 {
+                        let k=base as int-2+i%2;
+                        if i%2==0 {assert(k==base as int-2);}
+                        else {assert(i%2==1);assert(k==base as int-1);}
+                        assert(output@[i]==self.ring@[k%32768]);
+                        assert(self.ring@[k%32768]==v.bytes[k]);
+                        if i>=2 {
+                            vstd::arithmetic::div_mod::lemma_mod_sub_multiples_vanish(i,2);
+                            assert(output@[i]==output@[i-2]);
+                            assert(current.bytes[base as int+i-2]==output@[i-2]);
+                        } else {assert(k==base as int-2+i);}
                     } else {
                         let k=base as int-self.distance+i;
                         vstd::arithmetic::div_mod::lemma_fundamental_div_mod((base-self.distance) as int,32768);
@@ -535,7 +554,7 @@ pub(super) fn process(s:&[u8],start:usize,count:usize,cap:usize,fuel:usize,outpu
             c.reduce_checksum(s,cap);
             let mut n=c.left.min(left).min(cap-c.produced).min(32768-c.produced%32768).min(256-c.pending);
             if c.mode==1 {n=n.min(c.bits.end-c.bits.at);}
-            else if c.distance!=1 {n=n.min(c.distance).min(32768-(c.produced-c.distance)%32768);}
+            else if c.distance>2 {n=n.min(c.distance).min(32768-(c.produced-c.distance)%32768);}
             assert(n>0);
             let pos=c.produced;let ghost before=c.model();let ghost previous=c.history@;
             let (dest,_)=scratch.split_at_mut(n);

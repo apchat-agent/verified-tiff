@@ -6,6 +6,7 @@ changes={
     'ring':('deflate.rs','dest.copy_from_slice(data);','dest.copy_from_slice(data);dest[0]=0;','deflate','Cursor::append_run'),
     'stored-position':('deflate.rs','if self.mode==1 {self.bits.at=self.bits.at+n;}','if self.mode==1 {self.bits.at=self.bits.at+n-1;}','deflate','Cursor::copy_run'),
     'work':('native_stream.rs','spend(budget,2*n)?;','spend(budget,n)?;','native_stream','Inflater::pull'),
+    'period-two':('deflate.rs','let second=self.ring[(base-1)%32768];','let second=self.ring[(base-2)%32768];','deflate','Cursor::copy_run'),
 }
 for name,(file,before,after,module,function) in changes.items():
     dest=root/'target'/('reject-deflate-bulk-'+name)

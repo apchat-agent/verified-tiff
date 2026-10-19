@@ -166,7 +166,7 @@ impl Inflater {
                 if c.mode==1 {
                     n=n.min(c.bits.end-c.bits.at);
                     if !last {n=n.min(s.len()-c.bits.at-1023);}
-                } else if c.distance!=1 {
+                } else if c.distance>2 {
                     n=n.min(c.distance).min(32768-(c.produced-c.distance)%32768);
                 }
                 assert(n>0);

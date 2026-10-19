@@ -217,9 +217,9 @@ contracts remain unchanged.
 
 Runs stop at the output/fuel limit, the 32 KiB destination-ring boundary and the
 256-byte checksum chunk boundary. Stored runs additionally stop at available
-aligned input and resumable lookahead. Match runs stop at their source-ring
+aligned input and resumable lookahead. Match runs with distance greater than two stop at their source-ring
 boundary and distance, so overlapping phrases are produced through successive
-runs. Distance one uses a repeated-byte fill. A contiguous slice copy updates
+runs. Distances one and two use constant-byte and alternating-byte fills. A contiguous slice copy updates
 the ring; a bounded checksum loop retains the original Adler model. Short runs
 retain the scalar path, including its existing negative-check coverage.
 
@@ -236,3 +236,38 @@ regenerates the new fixed-Huffman fixture and checks it with Python zlib. Three
 additional negative gates corrupt the bulk ring copy, stored cursor and work
 charge, alongside all pre-existing gates. Recorded evidence is in
 `evidence/deflate-inflate/bulk/`.
+
+## Distance-two copy regression
+
+The gray16 Predictor 2 workload expands 2,097,152 bytes; an independent Deflate
+parser, cross-checked against Python zlib on every strip, attributes 1,849,824
+bytes (88.2%) to distance-two matches. Splitting those matches at their distance
+created roughly 925,000 tiny chunks. Flat CPU sampling of the unchanged reader
+harness showed about 13.3 ms per operation in baseline Deflate streaming versus
+29.0 ms in the initial bulk path (including 13.3 ms in `copy_run`). Native sample
+transformation remained around 26–28 ms. These are approximate sampled CPU costs,
+not the uninstrumented benchmark medians.
+
+The follow-up fill captures the two source bytes independently, including when
+they straddle the history ring boundary, and alternates them over the bounded
+output run. The proof relates each byte to either the original history pair or
+the byte two positions earlier in the run. Output/checksum/history bounds and
+original transition/work contracts remain unchanged; no additional scratch or
+trust boundary is introduced. Odd run lengths preserve the next run's phase by
+reading its current history pair again.
+
+`period_two_matches_preserve_phase_across_ring_and_output_boundaries` compares
+scalar, batched and complete-stream output, exact work and preserved suffixes.
+The fixture is independently checked with zlib. A negative proof mutation makes
+the second byte equal the first and must be rejected. The standalone
+`benchmarks/check-deflate-regression.py` requires at least nine samples, identical
+input/output hashes, and a gray16 Predictor 2 median no more than 5% above its
+fresh baseline; it is separate from ordinary unit tests to avoid timing-dependent
+correctness tests. Follow-up evidence is recorded in `evidence/deflate-inflate/period-two/`.
+
+The final nine-sample pair measures 23.5573 ms baseline and 20.0303 ms fixed for
+gray16 Predictor 2 (14.97% faster); all seven requested workload medians improve.
+The fresh full proof gate verifies 1,824 obligations with zero errors and rejects
+all 134 negative mutations. Complete runtime, C, sanitizer and exact fixture
+checks pass. Cargo-mutants discovers no sites inside the selected Verus sources,
+so its zero result counts do not establish mutation coverage.

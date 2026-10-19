@@ -20,6 +20,8 @@ for name in [*changes,'batch-acceptance']:
     if depth==0:break
   p.write_text(s[:a]+'\n    {reveal(Inflater::batch_result); Err(Error::Invalid)}'+s[b+1:])
  log=root/'target'/('reject-reader-opt-'+name+'.log')
- with log.open('w') as f:r=subprocess.run([os.environ['VERUS'],'--crate-type','lib','--triggers-mode','silent','--rlimit','100','--verify-only-module',module,'--verify-function',function,str(dest/'lib.rs')],cwd=root,stdout=f,stderr=subprocess.STDOUT)
+ # Fix the solver seed for a semantic work-invariant diagnostic at rlimit 100.
+ options=['--smt-option','smt.random_seed=1'] if name=='batch-work' else []
+ with log.open('w') as f:r=subprocess.run([os.environ['VERUS'],*options,'--crate-type','lib','--triggers-mode','silent','--rlimit','100','--verify-only-module',module,'--verify-function',function,str(dest/'lib.rs')],cwd=root,stdout=f,stderr=subprocess.STDOUT)
  assert r.returncode!=0 and reason in log.read_text(),(name,log.read_text())
  print('Reader optimization gate: rejected broken '+name,flush=True)

@@ -1,5 +1,14 @@
 # Proof ledger
 
+The distance-two Deflate follow-up verifies 1,824 obligations with zero errors;
+the fresh complete gate passes all 134 negative checks in 4,162.98 seconds.
+Its alternating-byte fill retains the original transition, history, exact-work
+and output-frame models. The new negative mutation corrupts the second source
+byte. The existing scalar batch-work mutation uses solver seed 1 to produce its
+intended invariant failure at the unchanged resource limit 100; a resource-limit
+failure is not accepted as semantic evidence. Runtime, C, sanitizer and proof
+receipts are in [period-two evidence](evidence/deflate-inflate/period-two/).
+
 The Deflate prefix and bulk full proof gates passed. Complete runtime evidence
 from run 3 is recorded in [evidence status](evidence/deflate-inflate/README.md).
 

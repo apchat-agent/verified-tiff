@@ -380,3 +380,8 @@ checksums, output frames and conservative work quotas. Stored input and match
 history are copied in bounded slices; the complete-stream path adds only a
 fixed 256-byte scratch buffer. The C adapter and its input-window continuity
 boundary are unchanged. See [deflate.md](deflate.md#bulk-stored-and-match-copies).
+
+Distance-two matches use a proved alternating-byte fill, including ring-wrap and
+odd-length runs. This corrects the gray16 Predictor 2 bulk-copy regression without
+changing accepted streams, budgets or scratch space. See
+[the regression analysis](deflate.md#distance-two-copy-regression).

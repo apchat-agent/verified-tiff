@@ -24,3 +24,11 @@ Python's zlib validates the resulting stream. It starts with bytes 0..255 and
 AB, then length-258 matches at distance 258, 125 at distance 256, one at distance
 1 crossing the 32 KiB ring boundary, and another at distance 258. The decoded
 length is 33,282 bytes. No external fixture or license was imported.
+
+## Deflate distance-two period
+
+`period-two.py` generates `period-two.zlib` using the repository bit writer and
+checks the complete result with Python zlib. Three initial literals are followed
+by 129 length-258, distance-two matches, yielding 33,285 bytes. The two-byte source
+pair straddles the 32 KiB history boundary after 32,769 bytes; odd output/checksum
+chunks exercise phase preservation. No external fixture or license was imported.
