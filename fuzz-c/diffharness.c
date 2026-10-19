@@ -145,6 +145,8 @@ static uint32_t (*vt_number_of_strips)(TIFF *);
 static tmsize_t (*vt_read_encoded_tile)(TIFF *, uint32_t, void *, tmsize_t);
 static tmsize_t (*vt_read_encoded_strip)(TIFF *, uint32_t, void *, tmsize_t);
 static int (*vt_read_rgba_image)(TIFF *, uint32_t, uint32_t, uint32_t *, int);
+static uint64_t (*vt_strile_offset)(TIFF *, uint32_t);
+static uint64_t (*vt_strile_count)(TIFF *, uint32_t);
 static void (*vt_close)(TIFF *);
 static TIFFOpenOptions *(*vt_options_alloc)(void);
 static void (*vt_options_single)(TIFFOpenOptions *, tmsize_t);
@@ -181,6 +183,8 @@ static int vt_ready(void) {
   DLSYM(vt_read_encoded_tile, "TIFFReadEncodedTile");
   DLSYM(vt_read_encoded_strip, "TIFFReadEncodedStrip");
   DLSYM(vt_read_rgba_image, "TIFFReadRGBAImage");
+  DLSYM(vt_strile_offset, "TIFFGetStrileOffset");
+  DLSYM(vt_strile_count, "TIFFGetStrileByteCount");
   DLSYM(vt_close, "TIFFClose");
   DLSYM(vt_options_alloc, "TIFFOpenOptionsAlloc");
   DLSYM(vt_options_single, "TIFFOpenOptionsSetMaxSingleMemAlloc");
@@ -239,6 +243,22 @@ static void chop_check(TIFF *ref, TIFF *ours) {
   uint32_t rn = rt ? TIFFNumberOfTiles(ref) : TIFFNumberOfStrips(ref);
   uint32_t on = rt ? vt_number_of_tiles(ours) : vt_number_of_strips(ours);
   if (rs != os || rn != on) chop_divergent++;
+}
+
+/* Both engines must agree on the strile table the probes are about to use.
+ * libtiff recovers an unreadable offset/count array with estimates or zeros
+ * (tif_dirread.c:5048-5064, :5598-5604) while the adapter reads the declared
+ * arrays at their stored offsets (docs/metadata-contracts.md), so a
+ * corrupted array silently changes what the segments decode. Values are
+ * observable through the public strile accessors on both engines. */
+static int striles_agree(TIFF *ref, TIFF *ours, uint32_t count) {
+  uint32_t n = count > 4096 ? 4096 : count;
+  for (uint32_t i = 0; i < n; i++) {
+    if (TIFFGetStrileOffset(ref, i) != vt_strile_offset(ours, i) ||
+        TIFFGetStrileByteCount(ref, i) != vt_strile_count(ours, i))
+      return 0;
+  }
+  return 1;
 }
 
 static void segments(TIFF *ref, TIFF *ours, size_t *left, size_t *segments_left,
@@ -337,8 +357,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
          * at all: libtiff rejects wrongly typed known tags and falls back
          * (tif_getimage.c:394-411) while the adapter reads known tags
          * independently of the file's stored type (docs/metadata-contracts.md). */
+        int tiles = TIFFIsTiled(ref);
+        int strile_ok = striles_agree(ref, ours, tiles ? TIFFNumberOfTiles(ref) : TIFFNumberOfStrips(ref));
         if (r_w!=o_w || r_h!=o_h || (r_w&&rw!=ow) || (r_h&&rh!=oh) ||
             r_photo!=o_photo || (r_photo&&photo!=photo_ours)) {
+          skipped_meta++;
+        } else if (!strile_ok) {
           skipped_meta++;
         } else if (r_w && r_h && rw && rh && r_photo &&
                    bits==8 && ((photo<=1 && ch==1) || (photo==2 && ch==3)) &&
@@ -365,7 +389,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
           TIFFSetField(ref,TIFFTAG_SGILOGDATAFMT,SGILOGDATAFMT_16BIT);
           vt_set_field(ours,TIFFTAG_SGILOGDATAFMT,SGILOGDATAFMT_16BIT);
         }
-        segments(ref,ours,&left,&segment_budget,ci);
+        if (strile_ok) segments(ref,ours,&left,&segment_budget,ci);
       }
       int a=TIFFReadDirectory(ref), b=vt_read_directory(ours);
       if (a != b) dir_divergent++;

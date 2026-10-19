@@ -65,7 +65,9 @@ Build with `bash fuzz-c/build.sh`; outputs land in `target/fuzz-c/`:
   wrongly typed known tags and falls back, the adapter reads them
   independently of the file's stored type, `docs/metadata-contracts.md`;
   the RGBA probe is skipped unless both engines report the same photometric
-  presence and value).
+  presence and value, and both probes are skipped when the engines' strile
+  tables differ, which happens when libtiff recovers an unreadable
+  offset/count array while the adapter reads it as declared).
   One fixture per one-sided failure class lives in
   `tests/fixtures/diff-triage/`. Every input whose size is a multiple of 4
   additionally opens both engines with strip chopping ("rC") and counts the
@@ -90,7 +92,7 @@ Build with `bash fuzz-c/build.sh`; outputs land in `target/fuzz-c/`:
   | `skipped_complex` | per directory | documented complex-sample transport divergence |
   | `skipped_jpeg` | per directory | JPEG or OJPEG compression excluded |
   | `skipped_unsupported` | per directory | compression the adapter documents as ENOSYS (docs/c-api.md); also covers directories whose strips crash pinned libtiff (tests/fixtures/diff-triage/libtiff-crash-unsupported-codec.tif) |
-  | `skipped_meta` | per directory (at most two counts) | structural divergence: compression, geometry, photometric presence or value, tiled flag, strip/tile size or count |
+  | `skipped_meta` | per directory (at most two counts) | structural divergence: compression, geometry, photometric presence or value, strile-table values, tiled flag, strip/tile size or count |
   | `dir_divergent` | per directory transition | `TIFFReadDirectory` results differ |
   | `chop_both_opened` | per chop-mode input | both engines opened in "rC" mode |
   | `chop_divergent` | per chop-mode input | chopped structure (tiled flag, strip/tile size or count) disagrees |

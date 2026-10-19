@@ -18,6 +18,12 @@ units in `fuzz/README.md`). Each reproduces its class with
   documented policy of reading known tags independently of the file's stored
   type (docs/metadata-contracts.md) and inverts for MINISWHITE. The
   comparison domain is narrowed in the harness, not the adapter.
+- `mismatch-diverging-striles.tif` — mismatches: a tiled directory whose
+  TileByteCounts value array is stored at offset 1. libtiff recovers with
+  estimated counts and partially zero offsets (tif_dirread.c:5048-5064,
+  :5598-5604) while the adapter reads the declared arrays as stored
+  (docs/metadata-contracts.md), so the same tiles decode different bytes.
+  The harness compares the public strile accessors and skips the probes.
 - `libtiff-crash-unsupported-codec.tif` — a compression tag (65281) whose
   strips crash pinned libtiff 4.7.1 itself: after failed strip reads of the
   unsupported codec, the next TIFFReadDirectory SEGVs in
