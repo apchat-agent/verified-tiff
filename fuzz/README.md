@@ -89,6 +89,7 @@ Build with `bash fuzz-c/build.sh`; outputs land in `target/fuzz-c/`:
   | `ours_failed` / `ref_failed` / `both_failed` | per segment or RGBA probe | adapter failed / libtiff failed / both failed |
   | `skipped_complex` | per directory | documented complex-sample transport divergence |
   | `skipped_jpeg` | per directory | JPEG or OJPEG compression excluded |
+  | `skipped_unsupported` | per directory | compression the adapter documents as ENOSYS (docs/c-api.md); also covers directories whose strips crash pinned libtiff (tests/fixtures/diff-triage/libtiff-crash-unsupported-codec.tif) |
   | `skipped_meta` | per directory (at most two counts) | structural divergence: compression, geometry, photometric presence or value, tiled flag, strip/tile size or count |
   | `dir_divergent` | per directory transition | `TIFFReadDirectory` results differ |
   | `chop_both_opened` | per chop-mode input | both engines opened in "rC" mode |

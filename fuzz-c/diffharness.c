@@ -32,8 +32,8 @@ static const uint16_t codec_key[NCODEC] = {
 /* Units per counter are documented in fuzz/README.md. */
 static uint64_t inputs, both_opened, inputs_with_compare, compared, mismatches,
     skipped_warning, skipped_error, ours_failed, ref_failed, both_failed,
-    skipped_complex, skipped_jpeg, skipped_meta, dir_divergent,
-    chop_both_opened, chop_divergent;
+    skipped_complex, skipped_jpeg, skipped_meta, skipped_unsupported,
+    dir_divergent, chop_both_opened, chop_divergent;
 static uint64_t compared_by_codec[NCODEC + 1], skipped_by_codec[NCODEC + 1];
 static int compared_this_input;
 static int ref_err, ref_warn, our_err, our_warn;
@@ -54,14 +54,31 @@ static int codec_index(uint16_t v) {
     if (codec_key[i] == v) return i;
   return NCODEC;
 }
+/* Codecs the adapter documents segment decoding for (docs/profile.md,
+ * docs/c-api.md: unsupported APIs report ENOSYS by design); JPEG and OJPEG
+ * are excluded separately. Directories outside this set are adapter-ENOSYS
+ * by design, so probing them would only restate the support inventory -
+ * and libtiff 4.7.1 corrupts internal field state when strips of an
+ * unsupported codec are read before the next directory
+ * (tif_dirread.c:5256 SEGV, tests/fixtures/diff-triage/
+ * libtiff-crash-unsupported-codec.tif). */
+static int supported_codec(uint16_t c) {
+  switch (c) {
+    case 1: case 2: case 3: case 4: case 5: case 8: case 32773: case 32946:
+    case 34676: case 34887: case 50000: case 50001:
+      return 1;
+    default:
+      return 0;
+  }
+}
 static void counters(void) {
   fprintf(stderr,
           "DIFF inputs=%llu both_opened=%llu inputs_with_compare=%llu"
           " compared=%llu mismatches=%llu skipped_warning=%llu"
           " skipped_error=%llu ours_failed=%llu ref_failed=%llu"
           " both_failed=%llu skipped_complex=%llu skipped_jpeg=%llu"
-          " skipped_meta=%llu dir_divergent=%llu chop_both_opened=%llu"
-          " chop_divergent=%llu\n",
+          " skipped_unsupported=%llu skipped_meta=%llu dir_divergent=%llu"
+          " chop_both_opened=%llu chop_divergent=%llu\n",
           (unsigned long long)inputs, (unsigned long long)both_opened,
           (unsigned long long)inputs_with_compare,
           (unsigned long long)compared, (unsigned long long)mismatches,
@@ -71,6 +88,7 @@ static void counters(void) {
           (unsigned long long)both_failed,
           (unsigned long long)skipped_complex,
           (unsigned long long)skipped_jpeg,
+          (unsigned long long)skipped_unsupported,
           (unsigned long long)skipped_meta,
           (unsigned long long)dir_divergent,
           (unsigned long long)chop_both_opened,
@@ -302,6 +320,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
       } else if (rc == COMPRESSION_JPEG || rc == COMPRESSION_OJPEG) {
         /* No universal numerical bound exists for JPEG or OJPEG. */
         skipped_jpeg++;
+      } else if (!supported_codec(rc)) {
+        skipped_unsupported++;
       } else {
         uint32_t rw=0,rh=0,ow=0,oh=0;
         uint16_t photo_ours=0;
