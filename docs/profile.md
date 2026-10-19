@@ -373,3 +373,10 @@ The fixed-size Huffman prefix table refines the original canonical decoder.
 It preserves oversubscribed/incomplete-tree rejection, the single-code and
 empty-distance exceptions, short tails, stream checksums, exact pixels and
 conservative work quotas. See [deflate.md](deflate.md#huffman-prefix-lookup).
+
+
+Bulk Deflate runs preserve the same accepted streams, exact byte-string history,
+checksums, output frames and conservative work quotas. Stored input and match
+history are copied in bounded slices; the complete-stream path adds only a
+fixed 256-byte scratch buffer. The C adapter and its input-window continuity
+boundary are unchanged. See [deflate.md](deflate.md#bulk-stored-and-match-copies).

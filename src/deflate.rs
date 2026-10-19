@@ -37,6 +37,10 @@ pub(super) struct Model {
     pub pos:int,pub mode:u8,pub left:usize,pub distance:usize,pub last:bool,
     pub lit:HModel,pub dist:HModel,pub bytes:Seq<u8>,pub window:usize,
 }
+pub(super) open spec fn run_model(v:Model,data:Seq<u8>,n:nat) -> Model {
+    Model{bytes:v.bytes+data.take(n as int),left:(v.left-n) as usize,
+        pos:if v.mode==1 {v.pos+8*n} else {v.pos},..v}
+}
 pub(super) open spec fn append(v:Model,b:u8) -> Model {Model {bytes:v.bytes.push(b),..v}}
 pub(super) open spec fn advance(v:Model) -> Model {Model {mode:if v.last {4u8} else {0u8},..v}}
 #[verifier::opaque]
@@ -162,6 +166,148 @@ impl Cursor {
             }
         }
         Ok(())
+    }
+    // Copy one contiguous history run, then accumulate its checksum without
+    // per-byte ring indexing, mode dispatch, or checksum-reduction branches.
+    pub(super) fn append_run(&mut self,data:&[u8],s:&[u8],cap:usize)
+        requires old(self).valid(s@,cap as int),
+            0<data.len()<=256-old(self).pending,
+            data.len()<=cap-old(self).produced,
+            data.len()<=32768-old(self).produced%32768,
+        ensures final(self).valid(s@,cap as int),
+            final(self).model()==(Model{bytes:old(self).history@+data@,..old(self).model()}),
+            final(self).bits==old(self).bits,final(self).left==old(self).left,
+            final(self).produced==old(self).produced+data.len(),
+    {
+        let base=self.produced;let at=base%32768;let n=data.len();
+        let ghost prior=self.history@;
+        let mut i=0usize;
+        while i<n
+            invariant i<=n,n==data.len(),n>0,n<=256-old(self).pending,
+                base==old(self).produced,base+n<=cap,at==base%32768,at+n<=32768,
+                self.produced==base,self.bits==old(self).bits,self.mode==old(self).mode,
+                self.left==old(self).left,self.distance==old(self).distance,self.last==old(self).last,
+                self.lit==old(self).lit,self.dist==old(self).dist,self.window==old(self).window,
+                self.ring==old(self).ring,prior==old(self).history@,
+                self.history@==prior+data@.take(i as int),
+                self.pending==old(self).pending+i,self.pending<=256,
+                self.a%65521==adler1(self.history@),self.b%65521==adler2(self.history@),
+                self.a<=65520+self.pending*255,self.b<=65520+self.pending*130800,
+            decreases n-i,
+        {
+            let byte=data[i];let ghost previous=self.history@;
+            let ghost pa=self.a;let ghost pb=self.b;
+            self.a=self.a+byte as usize;self.b=self.b+self.a;self.pending=self.pending+1;
+            proof {
+                self.history=Ghost(previous.push(byte));
+                assert(self.history@.drop_last() =~= previous);
+                assert(self.history@.last()==byte);
+                reveal_with_fuel(adler1,2);reveal_with_fuel(adler2,2);
+                assert(self.a%65521==(pa%65521+byte as int)%65521);
+                assert(self.b%65521==(pb%65521+self.a%65521)%65521);
+                assert(self.history@ =~= prior+data@.take(i as int+1));
+            }
+            i=i+1;
+        }
+        let (_,tail)=self.ring.split_at_mut(at);
+        let (dest,_)=tail.split_at_mut(n);
+        dest.copy_from_slice(data);
+        self.produced=base+n;
+        proof {
+            assert(self.history@ =~= prior+data@);
+            assert forall|k:int| 0<=k<self.produced && self.produced as int-32768<=k implies self.ring@[k%32768]==self.history@[k] by {
+                vstd::arithmetic::div_mod::lemma_fundamental_div_mod(base as int,32768);
+                vstd::arithmetic::div_mod::lemma_fundamental_div_mod(k,32768);
+                if k>=base {
+                    vstd::arithmetic::div_mod::lemma_fundamental_div_mod_converse(k,32768,base as int/32768,at as int+k-base);
+                    assert(self.ring@[k%32768]==data@[k-base]);
+                } else {
+                    if at<=k%32768<at+n {
+                        assert(false) by(nonlinear_arith)
+                            requires k==k/32768*32768+k%32768,base==base as int/32768*32768+at,
+                                base+n-32768<=k<base,at<=k%32768<at+n;
+                    }
+                    assert(self.ring@[k%32768]==old(self).ring@[k%32768]);
+                    assert(old(self).ring@[k%32768]==prior[k]);
+                }
+            }
+        }
+    }
+    pub(super) fn reduce_checksum(&mut self,s:&[u8],cap:usize)
+        requires old(self).valid(s@,cap as int),
+        ensures final(self).valid(s@,cap as int),final(self).model()==old(self).model(),
+            final(self).bits==old(self).bits,final(self).produced==old(self).produced,
+            final(self).pending<256,
+    {
+        if self.pending==256 {self.a=self.a%65521;self.b=self.b%65521;self.pending=0;}
+    }
+    // The caller bounds a run to the source/destination ring tails. Overlap is
+    // split at the distance; distance one can fill the whole bounded run.
+    pub(super) fn copy_run(&mut self,s:&[u8],cap:usize,output:&mut[u8])
+        requires old(self).valid(s@,cap as int),
+            0<old(output).len()<=256-old(self).pending,
+            old(output).len()<=old(self).left,old(output).len()<=cap-old(self).produced,
+            old(output).len()<=32768-old(self).produced%32768,
+            old(self).mode==1 || old(self).mode==3,
+            old(self).mode==1 ==> old(self).bits.bit==0 && old(output).len()<=old(self).bits.end-old(self).bits.at,
+            old(self).mode==3 ==> 0<old(self).distance<=old(self).produced && old(self).distance<=old(self).window &&
+                (old(self).distance==1 || (old(output).len()<=old(self).distance && old(output).len()<=32768-(old(self).produced-old(self).distance)%32768)),
+        ensures final(self).valid(s@,cap as int),final(self).end()==old(self).end(),
+            final(output).len()==old(output).len(),
+            final(self).model()==run_model(old(self).model(),final(output)@,final(output).len() as nat),
+            final(self).produced==old(self).produced+final(output).len(),
+            forall|i:int| 0<=i<final(output).len() ==> #[trigger] transition(s@,old(self).end(),cap as int,run_model(old(self).model(),final(output)@,i as nat))==
+                Some(run_model(old(self).model(),final(output)@,(i+1) as nat)),
+    {
+        let n=output.len();let ghost v=self.model();let base=self.produced;
+        if self.mode==1 {
+            copy_byte_run(s,self.bits.at,output,0,n,false);
+            assert forall|i:int| 0<=i<n implies output@[i]==s@[self.bits.at as int+i] by {
+                assert(output@[0int+i]==s@[self.bits.at as int+i]);
+            };
+        } else {
+            let source=(base-self.distance)%32768;
+            if self.distance==1 {
+                let byte=self.ring[source];let mut i=0usize;
+                while i<n
+                    invariant i<=n,output.len()==n,forall|k:int| 0<=k<i ==> output@[k]==byte,
+                    decreases n-i,
+                {output[i]=byte;i=i+1;}
+            } else {
+                copy_byte_run(&self.ring,source,output,0,n,false);
+                assert forall|i:int| 0<=i<n implies output@[i]==self.ring@[source as int+i] by {
+                    assert(output@[0int+i]==self.ring@[source as int+i]);
+                };
+            }
+        }
+        proof {
+            reveal(transition);
+            assert forall|i:int| 0<=i<n implies #[trigger] transition(s@,self.end(),cap as int,run_model(v,output@,i as nat))==
+                Some(run_model(v,output@,(i+1) as nat)) by {
+                let current=run_model(v,output@,i as nat);
+                if self.mode==1 {
+                    aligned_byte(s@,self.bits.at as int+i);
+                    assert(output@[i]==s@[self.bits.at as int+i]);
+                } else {
+                    if self.distance==1 {
+                        assert(output@[i]==v.bytes[base as int-1]);
+                        if i>0 {assert(current.bytes[base as int+i-1]==output@[i-1]);}
+                    } else {
+                        let k=base as int-self.distance+i;
+                        vstd::arithmetic::div_mod::lemma_fundamental_div_mod((base-self.distance) as int,32768);
+                        vstd::arithmetic::div_mod::lemma_fundamental_div_mod_converse(k,32768,(base as int-self.distance)/32768,(base as int-self.distance)%32768+i);
+                        assert(output@[i]==self.ring@[k%32768]);
+                        assert(self.ring@[k%32768]==v.bytes[k]);
+                    }
+                    assert(output@[i]==current.bytes[current.bytes.len() as int-self.distance]);
+                }
+                assert(current.bytes.push(output@[i]) =~= run_model(v,output@,(i+1) as nat).bytes);
+            }
+        }
+        assert(output@.take(n as int) =~= output@);
+        self.append_run(output,s,cap);
+        self.left=self.left-n;
+        if self.mode==1 {self.bits.at=self.bits.at+n;}
     }
     pub(super) fn done(&self) -> (r:bool) ensures r==(self.model().mode==5) {self.mode==5}
     #[inline(always)]
@@ -325,6 +471,33 @@ pub(super) proof fn finish_prefix(s:Seq<u8>,end:int,cap:int,v:Model,fuel:nat)
     }
 }
 
+// Run composition for the complete-stream validator/emitter uses the same
+// transition relation and decrements its original fuel once per copied byte.
+proof fn finish_run(s:Seq<u8>,end:int,cap:int,states:Seq<Model>,fuel:nat)
+    requires states.len()>0,states.len()-1<=fuel,
+        forall|i:int| 0<=i<states.len()-1 ==> {
+            &&& states[i].mode!=5
+            &&& #[trigger] transition(s,end,cap,states[i])==Some(states[i+1])
+        },
+    ensures finish(s,end,cap,states[0],fuel)==
+        finish(s,end,cap,states.last(),(fuel-(states.len()-1)) as nat),
+    decreases states.len(),
+{
+    if states.len()>1 {
+        reveal_with_fuel(finish,1);
+        let tail=states.drop_first();
+        assert(tail.len()+1==states.len());
+        assert forall|i:int| 0<=i<tail.len()-1 implies tail[i].mode!=5 &&
+            transition(s,end,cap,tail[i])==Some(tail[i+1]) by {
+            assert(tail[i]==states[i+1]);assert(tail[i+1]==states[i+2]);
+            assert(0<=i+1<states.len()-1);
+            assert(transition(s,end,cap,states[i+1])==Some(states[(i+1)+1]));
+            assert(states[i+1].mode!=5);
+        }
+        finish_run(s,end,cap,tail,(fuel-1) as nat);
+    }
+}
+
 pub(super) fn validate(s:&[u8],start:usize,count:usize,cap:usize,fuel:usize) -> (r:Result<usize,Error>)
     ensures r.is_ok()==result(s@,start as int,count as int,cap as int,fuel as nat).is_some(),
         r.is_ok() ==> r.unwrap()==result(s@,start as int,count as int,cap as int,fuel as nat).unwrap().len(),
@@ -347,7 +520,7 @@ pub(super) fn process(s:&[u8],start:usize,count:usize,cap:usize,fuel:usize,outpu
 {
     reveal(result);
     let mut c=Cursor::new(s,start,count,cap)?;
-    let mut left=fuel;
+    let mut left=fuel;let mut scratch=[0u8;256];
     while !c.done() && left>0
         invariant c.valid(s@,cap as int),left<=fuel,c.end()==start as int+count-4,
             result(s@,start as int,count as int,cap as int,fuel as nat)==finish(s@,c.end(),cap as int,c.model(),left as nat),
@@ -356,6 +529,37 @@ pub(super) fn process(s:&[u8],start:usize,count:usize,cap:usize,fuel:usize,outpu
             forall|k:int| write<=k<output.len() ==> output@[k]==old(output)@[k],
         decreases left,
     {
+        if c.left>1 && left>1 && c.produced<cap &&
+            ((c.mode==1 && c.bits.bit==0 && c.bits.at<c.bits.end) ||
+             (c.mode==3 && c.distance>0 && c.distance<=c.produced && c.distance<=c.window)) {
+            c.reduce_checksum(s,cap);
+            let mut n=c.left.min(left).min(cap-c.produced).min(32768-c.produced%32768).min(256-c.pending);
+            if c.mode==1 {n=n.min(c.bits.end-c.bits.at);}
+            else if c.distance!=1 {n=n.min(c.distance).min(32768-(c.produced-c.distance)%32768);}
+            assert(n>0);
+            let pos=c.produced;let ghost before=c.model();let ghost previous=c.history@;
+            let (dest,_)=scratch.split_at_mut(n);
+            c.copy_run(s,cap,dest);
+            let ghost data=dest@;
+            proof {
+                let states=Seq::new(n as nat+1,|i:int|run_model(before,data,i as nat));
+                assert(states[0]==before) by {assert(data.take(0) =~= Seq::<u8>::empty());}
+                assert(states.last()==c.model());
+                assert forall|i:int| 0<=i<states.len()-1 implies states[i].mode!=5 &&
+                    transition(s@,c.end(),cap as int,states[i])==Some(states[i+1]) by {
+                    assert(states[i]==run_model(before,data,i as nat));
+                    assert(states[i+1]==run_model(before,data,(i+1) as nat));
+                }
+                finish_run(s@,c.end(),cap as int,states,left as nat);
+            }
+            if pos<write {copy_byte_run(dest,0,output,pos,n.min(write-pos),false);}
+            left=left-n;
+            assert forall|k:int| 0<=k<write && k<c.produced implies output@[k]==c.history@[k] by {
+                if k<pos {assert(c.history@[k]==previous[k]);}
+                else {assert(output@[pos as int+(k-pos)]==data[0int+(k-pos)]);assert(output@[k]==data[k-pos]);}
+            }
+            continue;
+        }
         reveal_with_fuel(finish,1);
         let pos=c.produced;let ghost previous=c.history@;
         let next=c.step(s,cap)?;left=left-1;

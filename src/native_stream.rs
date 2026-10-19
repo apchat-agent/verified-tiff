@@ -36,6 +36,18 @@ pub(super) proof fn batch_run(s:Seq<u8>,end:int,cap:int,states:Seq<Model>,space:
         batch(s,end,cap,states.last(),(space-(states.len()-1)) as nat,(fuel-(states.len()-1)) as nat,last),
     decreases states.len(),
 {
+    if states.len()>1 {
+        reveal_with_fuel(batch,1);
+        let tail=states.drop_first();
+        assert forall|i:int| 0<=i<tail.len()-1 implies {
+            &&& !batch_stop(s,tail[i],((space-1) as int-i) as nat,last)
+            &&& crate::deflate::transition(s,end,cap,tail[i])==Some(tail[i+1])
+            &&& tail[i+1].bytes.len()==tail[i].bytes.len()+1
+        } by {
+            assert(tail[i]==states[i+1]);assert(tail[i+1]==states[i+2]);
+        }
+        batch_run(s,end,cap,tail,(space-1) as nat,(fuel-1) as nat,last);
+    }
 }
 
 pub struct Inflater {cursor:Cursor,live:bool,cap:usize}
@@ -145,6 +157,49 @@ impl Inflater {
                 forall|k:int|write<=k<output.len() ==> output@[k]==old(output)@[k],
             decreases left,
         {
+            if c.left>1 && write-written>1 && left>1 && c.produced<self.cap &&
+                ((c.mode==1 && c.bits.bit==0 && c.bits.at<c.bits.end) ||
+                 (c.mode==3 && c.distance>0 && c.distance<=c.produced && c.distance<=c.window)) {
+                c.reduce_checksum(s,self.cap);
+                let mut n=c.left.min(write-written).min(left).min(self.cap-c.produced)
+                    .min(32768-c.produced%32768).min(256-c.pending);
+                if c.mode==1 {
+                    n=n.min(c.bits.end-c.bits.at);
+                    if !last {n=n.min(s.len()-c.bits.at-1023);}
+                } else if c.distance!=1 {
+                    n=n.min(c.distance).min(32768-(c.produced-c.distance)%32768);
+                }
+                assert(n>0);
+                let ghost before=c.model();let ghost previous=c.history@;
+                let ghost data;
+                {
+                    let (_,tail)=output.split_at_mut(written);
+                    let (dest,_)=tail.split_at_mut(n);
+                    c.copy_run(s,self.cap,dest);
+                    proof {data=dest@;}
+                }
+                proof {
+                    let states=Seq::new(n as nat+1,|i:int|crate::deflate::run_model(before,data,i as nat));
+                    assert(states[0]==before) by {assert(data.take(0) =~= Seq::<u8>::empty());}
+                    assert(states.last()==c.model());
+                    assert forall|i:int| 0<=i<states.len()-1 implies {
+                        &&& !batch_stop(s@,states[i],((write-written) as int-i) as nat,last)
+                        &&& crate::deflate::transition(s@,end as int,self.cap as int,states[i])==Some(states[i+1])
+                        &&& states[i+1].bytes.len()==states[i].bytes.len()+1
+                    } by {
+                        assert(states[i]==crate::deflate::run_model(before,data,i as nat));
+                        assert(states[i+1]==crate::deflate::run_model(before,data,(i+1) as nat));
+                    }
+                    batch_run(s@,end as int,self.cap as int,states,(write-written) as nat,left as nat,last);
+                }
+                spend(budget,2*n)?;
+                written=written+n;left=left-n;
+                assert forall|k:int| 0<=k<written implies output@[k]==c.history@[base+k] by {
+                    if k<written-n {assert(c.history@[base+k]==previous[base+k]);}
+                    else {assert(output@[k]==data[k-(written-n)]);}
+                }
+                continue;
+            }
             if c.mode==3 && c.left>0 && c.distance>0 && c.distance<=c.produced && c.distance<=c.window && c.left<=self.cap-c.produced {
                 let n=c.left.min(write-written).min(left);let mut i=0usize;
                 let at_before=c.bits.at;let count_before=c.left;let prior_left=left;
@@ -271,3 +326,4 @@ pub fn packet(s:&[u8],at:usize,stride:usize,produced:usize,needed:usize)->(r:Res
     Ok((p.next,p.data,p.len,p.repeat))
 }
 }
+

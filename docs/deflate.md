@@ -205,3 +205,34 @@ implementation is added. The cache adds 512 declared bytes per Huffman table
 claimed. Two additional negative gates corrupt cache construction and cached
 lookup output. The single-code regression checks lookahead into a following
 block, unused prefixes, and incomplete/oversubscribed tree rejection.
+
+
+## Bulk stored and match copies
+
+Both `native_stream::Inflater::pull` and the complete `deflate::process` path
+copy bounded runs while refining the original single-byte transition relation.
+`run_model`, `batch_run`, and `finish_run` connect each copied byte to that
+relation; the existing acceptance, checksum, exact fuel, output and suffix-frame
+contracts remain unchanged.
+
+Runs stop at the output/fuel limit, the 32 KiB destination-ring boundary and the
+256-byte checksum chunk boundary. Stored runs additionally stop at available
+aligned input and resumable lookahead. Match runs stop at their source-ring
+boundary and distance, so overlapping phrases are produced through successive
+runs. Distance one uses a repeated-byte fill. A contiguous slice copy updates
+the ring; a bounded checksum loop retains the original Adler model. Short runs
+retain the scalar path, including its existing negative-check coverage.
+
+The complete-stream path uses an additional fixed 256-byte stack scratch buffer
+for validation and private emission. The resumable path uses the caller's output
+slice directly. Neither path allocates or adds runtime recursion. Adapter input
+window continuity and validation-before-exposure remain the adapter's existing
+responsibility; this change does not extend that proof boundary.
+
+`tests/stream_batch.rs` covers exact work charges and one-less budgets, 32 KiB
+wrap, distance-one overlap, distance equal to match length, output chunking and
+stored blocks crossing input windows. `tests/fixtures/copy-boundaries.py`
+regenerates the new fixed-Huffman fixture and checks it with Python zlib. Three
+additional negative gates corrupt the bulk ring copy, stored cursor and work
+charge, alongside all pre-existing gates. Recorded evidence is in
+`evidence/deflate-inflate/bulk/`.

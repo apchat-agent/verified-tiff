@@ -1,5 +1,15 @@
 # Proof ledger
 
+The Deflate prefix and bulk full proof gates passed. Complete runtime evidence
+from run 3 is recorded in [evidence status](evidence/deflate-inflate/README.md).
+
+The bulk Deflate pass retains the original byte-string transition, batch and
+complete-stream models. Its frozen whole-crate proof verifies 1,823 obligations
+with zero errors. Contiguous ring/checksum updates and run composition preserve
+exact bytes, work and output frames; all prior negative checks and three new
+bulk checks remain in the full gate. Receipts are in
+`evidence/deflate-inflate/bulk/`; see [deflate.md](deflate.md#bulk-stored-and-match-copies).
+
 The Deflate prefix lookup verifies table construction and cached symbol/bit
 consumption against the unchanged canonical model, with an input-prefix
 congruence lemma that also covers malformed tree models. Its whole-crate run

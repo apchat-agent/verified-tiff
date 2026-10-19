@@ -82,3 +82,4 @@ fn copy_runs_wrap_overlap_and_input_windows(){
         assert_eq!(batched(stored,expected.len(),window,chunk,2_000_000).unwrap().0,expected);
     }}
 }
+

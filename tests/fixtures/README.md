@@ -15,3 +15,12 @@ files use the independent Fraction-based native LogLuv16 reference. Parameters:
 `make(w=17,h=5,pages=2,rows=2)`. The second page has its own `-page1.pixels`
 file. These are API/frame regressions and mutation seeds. The unchanged
 upstream 166-byte LogLuv image itself is the concrete proof-witness seed.
+
+## Deflate copy boundaries
+
+copy-boundaries.zlib is generated locally by copy-boundaries.py, using the
+repository's bit writer and an independent Python byte-string reconstruction.
+Python's zlib validates the resulting stream. It starts with bytes 0..255 and
+AB, then length-258 matches at distance 258, 125 at distance 256, one at distance
+1 crossing the 32 KiB ring boundary, and another at distance 258. The decoded
+length is 33,282 bytes. No external fixture or license was imported.

@@ -232,3 +232,5 @@ VERUS="$VERUS" python3 scripts/reject-adapter.py
 
 VERUS="$VERUS" python3 scripts/reject-deflate-prefix.py
 
+VERUS="$VERUS" python3 scripts/reject-deflate-bulk.py
+

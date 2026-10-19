@@ -1,5 +1,6 @@
+"""Regenerate the ring-wrap/overlap fixture; independently check with zlib."""
 import pathlib,sys,zlib
-sys.path.insert(0,'tests')
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]))
 from deflate import Bits,fixed_symbol,wrapped
 b=Bits();b.put(1,1);b.put(1,2)
 raw=bytearray(bytes(range(256))+b'AB')
@@ -17,5 +18,5 @@ assert len(raw)==32766
 match(1);match(258);fixed_symbol(b,256)
 wire=wrapped(b.finish(),raw)
 assert zlib.decompress(wire)==raw
-pathlib.Path('work/copy-boundaries.zlib').write_bytes(wire)
+pathlib.Path(__file__).with_suffix('.zlib').write_bytes(wire)
 print('copy-boundaries.zlib:',len(wire),'compressed;',len(raw),'decoded')
