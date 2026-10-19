@@ -119,6 +119,30 @@ class Deflate(unittest.TestCase):
             p,out=self.run_data(tiny_tiff(stream,max(1,len(raw))), '--max-dimension',len(raw)+1)
             self.assertEqual(p.returncode,0 if raw else 2,p.stderr)
             if raw:self.assertEqual(pixels(out),raw)
+    def test_prefix_single_code_and_invalid_trees(self):
+        # Nonfinal single-code EOB table has lookahead into the following stored
+        # block, exercising the prefix lookup rather than only the short tail.
+        for kind in ['single','unused-code','incomplete','oversubscribed']:
+            b=Bits();b.put(0,1);b.put(0,2)
+            while len(b.bits)%8:b.put(0,1)
+            b.put(1,16);b.put(65534,16);b.put(65,8)
+            b.put(0,1);b.put(2,2);b.put(0,5);b.put(0,5);b.put(15,4)
+            for k in [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15]:
+                b.put(4 if k<16 else 0,3)
+            lit=[0]*257;lit[256]=2 if kind=='incomplete' else 1
+            if kind=='oversubscribed':lit[0]=lit[1]=1
+            for v in lit+[1]:b.code(v,4)
+            b.code(1 if kind=='unused-code' else 0,1)
+            b.put(1,1);b.put(0,2)
+            while len(b.bits)%8:b.put(0,1)
+            b.put(1,16);b.put(65534,16);b.put(66,8)
+            wire=wrapped(b.finish(),b'AB')
+            if kind=='single':self.assertEqual(zlib.decompress(wire),b'AB')
+            else:
+                with self.assertRaises(zlib.error):zlib.decompress(wire)
+            p,out=self.run_data(tiny_tiff(wire,2))
+            self.assertEqual(p.returncode,0 if kind=='single' else 2,(kind,p.stderr))
+            if kind=='single':self.assertEqual(pixels(out),b'AB')
     def test_malformed_streams(self):
         valid=zlib.compress(bytes(range(32)))
         bad=[valid[:-1],valid+bytes(1),valid+valid,valid[:2]+b'\x07'+valid[3:],valid[:-1]+bytes([valid[-1]^1]),b'\x78\x00'+valid[2:],b'\x79\x18'+valid[2:],b'\x88\x1c'+valid[2:],b'\x78\x20'+valid[2:]]

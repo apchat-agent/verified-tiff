@@ -278,6 +278,20 @@ pub(super) open spec fn symbol(s:Seq<u8>,p:int,end:int,h:HModel,n:nat,code:int,f
         } else {symbol(s,p+1,end,h,n+1,c,2*(first+count))}
     }
 }
+// A successful canonical decode depends only on its consumed prefix, even for
+// incomplete/oversubscribed models. Construction retains tree_ok unchanged.
+proof fn symbol_prefix(s:Seq<u8>,p:int,end:int,t:Seq<u8>,q:int,tend:int,
+    h:HModel,n:nat,code:int,first:int,limit:nat)
+    requires limit>0,p+limit<=end*8,q+limit<=tend*8,
+        forall|i:int| 0<=i<limit ==> #[trigger] field(s,p+i,1)==field(t,q+i,1),
+        symbol(t,q,tend,h,n,code,first).is_some(),
+        symbol(t,q,tend,h,n,code,first).unwrap().1<=q+limit,
+    ensures symbol(s,p,end,h,n,code,first)==Some((
+        symbol(t,q,tend,h,n,code,first).unwrap().0,
+        p+symbol(t,q,tend,h,n,code,first).unwrap().1-q)),
+    decreases 16-n,
+{}
+
 impl Huff {
     #[inline(always)]
     pub(super) fn read(&self,s:&[u8],bits:&mut Bits) -> (r:Result<usize,Error>)
