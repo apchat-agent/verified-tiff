@@ -1,0 +1,60 @@
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls  ns/call  ns/call  name
+ 59.59     24.49    24.49                             <verified_tiff_capi::Handle>::transform_native
+ 29.81     36.74    12.25                             <verified_tiff::native_stream::Inflater>::pull
+  8.81     40.36     3.62                             verified_tiff::read16
+  0.85     40.71     0.35                             vt_commit
+  0.49     40.91     0.20                             <verified_tiff::deflate_bits::Huff>::build
+  0.12     40.96     0.05                             verified_tiff::deflate_header::dynamic
+  0.10     41.00     0.04                             <verified_tiff_capi::stream::Stream>::new
+  0.05     41.02     0.02                             <verified_tiff_capi::Handle>::native_layout
+  0.05     41.04     0.02                             <verified_tiff_capi::Handle>::native_range
+  0.02     41.05     0.01    28564   350.09   350.09  seekto
+  0.02     41.06     0.01                             core::ptr::drop_glue::<verified_tiff_capi::Meta>
+  0.02     41.07     0.01                             <verified_tiff::native_stream::Inflater>::new
+  0.02     41.08     0.01                             <alloc::raw_vec::RawVecInner>::finish_grow
+  0.02     41.09     0.01                             <verified_tiff_capi::stream::Stream>::pull
+  0.02     41.10     0.01                             <verified_tiff_capi::storage::Buf<verified_tiff_capi::metadata::Converted>>::new
+  0.00     41.10     0.00    28564     0.00     0.00  rd
+  0.00     41.10     0.00      922     0.00     0.00  cl
+  0.00     41.10     0.00      922     0.00     0.00  open_source
+  0.00     41.10     0.00      922     0.00     0.00  settings
+  0.00     41.10     0.00      922     0.00     0.00  sz
+  0.00     41.10     0.00      921     0.00     0.00  operation
+  0.00     41.10     0.00        3     0.00     0.00  now
+
+ %         the percentage of the total running time of the
+time       program used by this function.
+
+cumulative a running sum of the number of seconds accounted
+ seconds   for by this function and those listed above it.
+
+ self      the number of seconds accounted for by this
+seconds    function alone.  This is the major sort for this
+           listing.
+
+calls      the number of times this function was invoked, if
+           this function is profiled, else blank.
+
+ self      the average number of milliseconds spent in this
+ms/call    function per call, if this function is profiled,
+	   else blank.
+
+ total     the average number of milliseconds spent in this
+ms/call    function and its descendents per call, if this
+	   function is profiled, else blank.
+
+name       the name of the function.  This is the minor sort
+           for this listing. The index shows the location of
+	   the function in the gprof listing. If the index is
+	   in parenthesis it shows where it would appear in
+	   the gprof listing if it were to be printed.
+
+Copyright (C) 2012-2024 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.

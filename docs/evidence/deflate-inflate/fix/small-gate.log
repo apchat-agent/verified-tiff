@@ -1,0 +1,15 @@
+w16-strips1 0.997060 PASS
+w16-strips64 0.990042 PASS
+w64-strips1 0.965240 PASS
+w64-strips64 0.998107 PASS
+w256-strips1 0.996219 PASS
+w256-strips64 0.976492 PASS
+w1024-strips1 1.001741 PASS
+w1024-strips64 1.024535 PASS
+w4096-strips1 0.961601 PASS
+w4096-strips64 0.959706 PASS
+empty-fixed-0 0.982859 PASS
+empty-fixed-8 0.965113 PASS
+empty-fixed-64 0.959282 PASS
+empty-dynamic-8 0.961530 PASS
+empty-dynamic-64 0.977811 PASS

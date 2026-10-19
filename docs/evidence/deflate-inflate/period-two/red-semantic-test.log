@@ -1,0 +1,8 @@
+# Selected outcome lines from archived full log; not a complete transcript.
+# Historical failures remain failures; run-3/fix receipts supersede earlier attempts.
+48 | fn pass4(a:[i32;4],b:[i32;4],c:[i32;4],d:[i32;4],bias:i32,walsh:bool,limit:i32) -> (r:[[i32;4];4])
+test batch_rejection_preserves_suffix_and_handles_empty_output ... ok
+test copy_runs_wrap_overlap_and_input_windows ... ok
+test period_two_matches_preserve_phase_across_ring_and_output_boundaries ... ok
+test batch_windows_outputs_and_work_match_scalar_transitions ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.88s

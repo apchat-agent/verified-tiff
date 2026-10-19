@@ -1,0 +1,62 @@
+RGBA gate: rejected broken pixels
+RGBA gate: rejected broken alpha
+RGBA gate: rejected broken frame
+RGBA gate: rejected broken acceptance
+Kernel gate: rejected broken lerc-round64
+Kernel gate: rejected broken lerc-narrow
+Kernel gate: rejected broken vp8-dc
+Kernel gate: rejected broken vp8-filter
+Kernel gate: rejected broken webp-coordinates
+Kernel gate: rejected broken fp-coordinates
+Kernel gate: rejected broken match-output
+Kernel gate: rejected broken match-work
+LERC arithmetic gate: rejected broken jam
+LERC arithmetic gate: rejected broken round
+LERC arithmetic gate: rejected broken pack
+LERC arithmetic gate: rejected broken add
+LERC arithmetic gate: rejected broken scale
+Native FP dispatch gate: rejected broken scale
+Native FP dispatch gate: rejected broken add
+Native FP dispatch gate: rejected broken narrow
+Native FP dispatch gate: rejected broken widen
+Native FP dispatch gate: rejected broken integer
+Native FP dispatch gate: rejected missing finite-operand check
+LERC throughput gate: rejected broken word
+LERC throughput gate: rejected broken unpack
+LERC throughput gate: rejected broken float
+LERC throughput gate: rejected broken coordinates
+LERC throughput gate: rejected broken mask
+WebP SIMD gate: rejected broken butterfly
+WebP SIMD gate: rejected broken transpose
+WebP SIMD gate: rejected broken rounding
+WebP SIMD gate: rejected broken color-rounding
+WebP SIMD gate: rejected broken color-order
+WebP SIMD gate: rejected broken color-position
+WebP SIMD gate: rejected broken color-tail
+WebP SIMD gate: rejected broken lane-range
+WebP span gate: rejected broken tile-end
+WebP span gate: rejected broken carry
+WebP span gate: rejected broken store
+WebP span gate: rejected broken green
+WebP span gate: rejected broken cross-color
+WebP span gate: rejected broken predictor
+WebP span gate: rejected broken tail
+Adapter proof gate: correctly rejected broken ink-count
+Adapter proof gate: correctly rejected broken ink-acceptance
+Adapter proof gate: correctly rejected broken ink-length
+Adapter proof gate: correctly rejected broken schema
+Adapter proof gate: correctly rejected broken narrowing
+Adapter proof gate: correctly rejected broken allocation
+Adapter proof gate: correctly rejected broken release
+Adapter proof gate: correctly rejected broken crop
+Adapter proof gate: correctly rejected broken window
+Adapter proof gate: correctly rejected broken commit
+Adapter proof gate: correctly rejected broken color
+Adapter proof gate: correctly rejected broken row
+Adapter proof gate: correctly rejected broken source
+Deflate prefix gate: rejected broken entry
+Deflate prefix gate: rejected broken lookup
+Deflate bulk gate: rejected broken ring
+Deflate bulk gate: rejected broken stored-position
+Deflate bulk gate: rejected broken work
+Deflate bulk gate: rejected broken period-two

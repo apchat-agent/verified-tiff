@@ -1,0 +1,7 @@
+gray-deflate native {'before': 11.6013094, 'after': 2.71921111, 'reference': 1.12770801}
+rgb-deflate native {'before': 23.440097, 'after': 6.70117068, 'reference': 3.15836925}
+rgb-deflate crop {'before': 5.75048216, 'after': 1.74076999, 'reference': 0.471359379}
+noise-deflate native {'before': 17.1395885, 'after': 2.39628431, 'reference': 0.920665671}
+gray16-deflate-p2 native {'before': 50.2641036, 'after': 40.2161416, 'reference': 6.78972079}
+large-strip-deflate firstrow {'before': 107.913756, 'after': 24.1160256, 'reference': 0.0563013703}
+large-strip-deflate crop {'before': 164.626912, 'after': 37.419006700000004, 'reference': 10.8921118}

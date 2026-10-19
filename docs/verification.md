@@ -1,5 +1,12 @@
 # Proof ledger
 
+The bounded Deflate setup follow-up verifies 1,824 obligations with
+zero errors and passes all 134 negative checks in 4028.14 seconds.
+The five-bit cache and short-run scalar selection preserve the original models,
+acceptance, exact work and output contracts. Source-bound final proof, runtime,
+C, sanitizer and exact output receipts are in [fix evidence](evidence/deflate-inflate/fix/).
+Historical receipts below apply to their recorded snapshots.
+
 The distance-two Deflate follow-up verifies 1,824 obligations with zero errors;
 the fresh complete gate passes all 134 negative checks in 4,162.98 seconds.
 Its alternating-byte fill retains the original transition, history, exact-work

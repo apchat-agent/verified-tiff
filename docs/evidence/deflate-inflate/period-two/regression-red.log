@@ -1,0 +1,6 @@
+gray16-deflate-p2 after/before: 1.483165; required <= 1.05
+Traceback (most recent call last):
+  File "<lane-root>/benchmarks/check-deflate-regression.py", line 12, in <module>
+    assert ratio<=1.05,'Deflate bulk-copy performance regression'
+           ^^^^^^^^^^^
+AssertionError: Deflate bulk-copy performance regression

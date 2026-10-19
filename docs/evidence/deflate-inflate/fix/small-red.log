@@ -1,0 +1,20 @@
+w16-strips1 1.527547 FAIL
+w16-strips64 1.743766 FAIL
+w64-strips1 1.185298 FAIL
+w64-strips64 1.294892 FAIL
+w256-strips1 1.229961 FAIL
+w256-strips64 1.260305 FAIL
+w1024-strips1 1.175033 FAIL
+w1024-strips64 1.216576 FAIL
+w4096-strips1 1.038749 PASS
+w4096-strips64 1.020423 PASS
+empty-fixed-0 1.537042 FAIL
+empty-fixed-8 1.913513 FAIL
+empty-fixed-64 2.052283 FAIL
+empty-dynamic-8 1.764937 FAIL
+empty-dynamic-64 1.835621 FAIL
+Traceback (most recent call last):
+  File "<host-path>", line 12, in <module>
+    assert not failed,failed
+           ^^^^^^^^^^
+AssertionError: ['w16-strips1', 'w16-strips64', 'w64-strips1', 'w64-strips64', 'w256-strips1', 'w256-strips64', 'w1024-strips1', 'w1024-strips64', 'empty-fixed-0', 'empty-fixed-8', 'empty-fixed-64', 'empty-dynamic-8', 'empty-dynamic-64']

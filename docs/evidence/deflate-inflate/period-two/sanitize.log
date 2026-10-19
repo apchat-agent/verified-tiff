@@ -1,0 +1,27 @@
+# Selected outcome lines from archived full log; not a complete transcript.
+# Historical failures remain failures; run-3/fix receipts supersede earlier attempts.
+48 | fn pass4(a:[i32;4],b:[i32;4],c:[i32;4],d:[i32;4],bias:i32,walsh:bool,limit:i32) -> (r:[[i32;4];4])
+48 | fn pass4(a:[i32;4],b:[i32;4],c:[i32;4],d:[i32;4],bias:i32,walsh:bool,limit:i32) -> (r:[[i32;4];4])
+Ran 18 tests in 36.905s
+OK
+Ran 11 tests in 7.386s
+OK
+Ran 12 tests in 9.157s
+OK
+C API: metadata/varargs, directory rollback, buffer frames, fd/callback ownership, limits, stubs, TLS and utilities passed
+Ran 11 tests in 15.992s
+OK
+Ran 4 tests in 5.982s
+OK
+Ran 3 tests in 8.245s
+OK
+Ran 2 tests in 1.986s
+OK
+test_new_codec_mutations (__main__.CodecMalformed.test_new_codec_mutations) ... ok
+Ran 2 tests in 2.935s
+OK
+Ran 1 test in 0.076s
+OK
+Ran 6 tests in 2.613s
+OK
+C shim hardening assertions passed

@@ -1,0 +1,66 @@
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.79s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.82s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.35s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Ran 23 tests in 97.210s
+OK
+bilevel matrix: 320 cases; oracle=True
+LZW matrix: 320 cases; oracle=True
+PackBits matrix: 640 cases; oracle=True
+profile matrix: 96 cases; oracle=True
+Ran 4 tests in 8.014s
+OK
+LZW tail profile matrix: 64 cases; independent pixels and live libtiff exact
+Ran 5 tests in 6.281s
+OK
+Legacy LZW profile matrix: 128 cases; independent pixels and live libtiff exact
+Ran 7 tests in 18.380s
+OK
+alpha matrix: 576 cases; native libtiff oracle=True
+Ran 5 tests in 14.524s
+OK
+16-bit matrix: 576; native oracle=True
+palette matrix: 288; native oracle=True
+8-bit separate matrix: 324; native oracle=True
+Ran 7 tests in 9.852s
+OK
+Deflate matrix: 816; live oracle=True
+Ran 8 tests in 16.006s
+OK
+JPEG edge/optimized-table matrix: 120
+JPEG matrix: 384; independent libjpeg native components; maximum channel error <=3
+JPEG legacy/header/reference-range matrix: 46
+Ran 7 tests in 5.091s
+OK
+Fax format matrix: 192; exact known pixels and independent libtiff rendering
+Ran 4 tests in 7.390s
+OK
+float64 matrix: 256; bit-exact native oracle=True
+Ran 9 tests in 19.443s
+OK
+WebP profile matrix: 192 cases; libtiff/native exact
+Ran 7 tests in 2.385s
+OK
+LogLuv format matrix: 96; exact rational reference and libtiff native components
+Ran 2 tests in 13.372s
+OK
+upstream fixtures: 31; live oracle=True
+PermissionError: BRIEF download clarification pending: https://codeload.github.com/facebook/zstd/tar.gz/refs/tags/v1.5.7
+real 315.42

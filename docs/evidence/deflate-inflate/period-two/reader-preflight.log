@@ -1,0 +1,4 @@
+Reader optimization gate: rejected broken highest
+Reader optimization gate: rejected broken batch-output
+Reader optimization gate: rejected broken batch-work
+Reader optimization gate: rejected broken batch-acceptance

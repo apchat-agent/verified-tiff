@@ -369,7 +369,9 @@ sanitizer tests. All emitted C function/line/branch coverage remains 100%.
 
 ## Deflate prefix lookup
 
-The fixed-size Huffman prefix table refines the original canonical decoder.
+The bounded 32-entry, five-bit Huffman prefix table refines the original
+canonical decoder. Code-length trees and trees without any code of at most
+four bits skip cache construction; longer codes retain the canonical walk.
 It preserves oversubscribed/incomplete-tree rejection, the single-code and
 empty-distance exceptions, short tails, stream checksums, exact pixels and
 conservative work quotas. See [deflate.md](deflate.md#huffman-prefix-lookup).

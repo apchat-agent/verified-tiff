@@ -1,0 +1,135 @@
+# Selected outcome lines from archived full log; not a complete transcript.
+# Historical failures remain failures; run-3/fix receipts supersede earlier attempts.
+48 | fn pass4(a:[i32;4],b:[i32;4],c:[i32;4],d:[i32;4],bias:i32,walsh:bool,limit:i32) -> (r:[[i32;4];4])
+48 | fn pass4(a:[i32;4],b:[i32;4],c:[i32;4],d:[i32;4],bias:i32,walsh:bool,limit:i32) -> (r:[[i32;4];4])
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test ink_names_exact_payload ... ok
+test metadata_integer_conversions_match_wide_reference ... ok
+test output_commit_has_exact_frames_and_failure_atomicity ... ok
+test output_commit_initializes_uninitialized_c_storage ... ok
+test schemas_do_not_change_argument_shape_with_stored_count ... ok
+test windows_preserve_exact_unread_suffix_and_source_position ... ok
+test float_index_matches_hardware_saturating_cast ... ok
+test crops_match_coordinate_reference_and_do_not_touch_padding ... ok
+test allocation_and_row_rounding_boundaries_fail_closed ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.50s
+test malformed_and_zero_budget_preserve_suffixes ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test bilevel_expansion_budget_and_frame ... ok
+test borrowed_input_cannot_be_swapped ... ok
+test byte_readers_and_overflow_edges ... ok
+test exact_decode_work_boundary ... ok
+test formal_alpha_witness_decodes_with_sufficient_budget ... ok
+test formal_packbits_witness_decodes_with_sufficient_budget ... ok
+test formal_profile_witness_decodes_with_sufficient_budget ... ok
+test insufficient_output_does_not_write_or_spend ... ok
+test formal_lzw_witness_decodes_with_sufficient_budget ... ok
+test legacy_lzw_witness_and_full_dictionary_frames ... ok
+test lzw_output_budget_and_frame ... ok
+test lzw_tail_witness_budget_and_frame ... ok
+test packbits_output_budget_and_frame ... ok
+test public_decode_and_tail_frame ... ok
+test sufficient_budget_calculator_handles_overflow ... ok
+test alpha_output_budget_and_frame ... ok
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test sufficient_inspection_budgets_and_checked_overflow ... ok
+test broader_formats_pixels_quotas_and_buffer_frames ... ok
+test combined_deflate_matches_prevalidated_pixels_budgets_and_frames ... ok
+test combined_deflate_mutations_preserve_acceptance_and_padding_checks ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.66s
+test concrete_fax_witnesses_are_exact ... ok
+test fax_budget_formula_and_overflow ... ok
+test fax_pixels_exact_quotas_and_buffer_frames ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test float64_formal_witness_budgets_and_modular_overflow ... ok
+test numeric_format_distinguishes_existing_integer_outputs ... ok
+test float64_pixels_metadata_budgets_and_frames ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test concrete_gray_witness_is_exact ... ok
+test jpeg_budget_formula_and_overflow ... ok
+test jpeg_pixels_exact_quotas_and_buffer_frames ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test normal_narrowing_ties_carries_and_fallback_boundaries ... ok
+test normalization_boundaries_match_hardware ... ok
+test scaled_products_cross_word_and_ieee_boundaries ... ok
+test ieee_reconstruction_matches_hardware ... ok
+test native_primitives_match_software_reference ... ok
+test word_addition_alignment_cancellation_and_rounding ... ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+test every_width_alignment_and_short_ending_matches_independent_bits ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.87s
+test logluv_concrete_witness_and_budget_overflow ... ok
+test logluv_pixels_quotas_and_buffer_frames ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test bigtiff_64bit_ranges_and_header_acceptance ... ok
+test native_stream_acceptance_budget_and_failure_frames ... ok
+test ojpeg_scan_relabeling_preserves_entropy_and_checks_source ... ok
+test resumable_dictionary_and_packet_transitions ... ok
+test resumable_zlib_checksum_and_budget ... ok
+test ccitt_rle_row_alignment_fill_order_work_and_errors ... ok
+test component_permutation_and_failure_frames ... ok
+test floating_predictor3_significance_planes_rows_channels_and_frames ... ok
+test exact_native_words_prediction_rows_channels_and_frames ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test invalid_rows_are_atomic_including_overflow_and_short_buffers ... ok
+test rows_match_independent_integer_reference_and_preserve_suffix ... ok
+test every_16bit_rounding_value_and_every_8bit_alpha_pair ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+test batch_rejection_preserves_suffix_and_handles_empty_output ... ok
+test batch_windows_outputs_and_work_match_scalar_transitions ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.80s
+test wide_transform_matches_previous_scalar ... ok
+test upstream_arithmetic_and_transforms ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.44s
+test webp_budget_formula_and_overflow ... ok
+test concrete_webp_witness_has_opaque_alpha_and_exact_budget ... ok
+test webp_pixels_exact_quotas_and_buffer_frames ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test lossless_lanes_match_previous_scalar ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s
+test independent_compressed_sequence_and_overlapping_match ... ok
+test raw_rle_mixed_blocks_empty_and_unknown_content_size ... ok
+test truncation_trailers_checksums_dictionary_ids_and_buffer_frames ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+48 | fn pass4(a:[i32;4],b:[i32;4],c:[i32;4],d:[i32;4],bias:i32,walsh:bool,limit:i32) -> (r:[[i32;4];4])
+Ran 23 tests in 38.619s
+OK
+Ran 4 tests in 7.952s
+OK
+Ran 5 tests in 7.769s
+OK
+Ran 7 tests in 17.865s
+OK
+Ran 5 tests in 9.470s
+OK
+Ran 7 tests in 8.771s
+OK
+Ran 8 tests in 12.632s
+OK
+Ran 7 tests in 4.008s
+OK
+Ran 4 tests in 4.810s
+OK
+Ran 9 tests in 14.902s
+OK
+Ran 7 tests in 2.236s
+OK
+Ran 2 tests in 11.166s
+OK
+48 | fn pass4(a:[i32;4],b:[i32;4],c:[i32;4],d:[i32;4],bias:i32,walsh:bool,limit:i32) -> (r:[[i32;4];4])
+test_deterministic_mutations_match_reference_when_accepted (__main__.Zstandard.test_deterministic_mutations_match_reference_when_accepted) ... ok
+Ran 5 tests in 6.297s
+OK
+Zstandard mutations: 1500, accepted comparisons: 117
+48 | fn pass4(a:[i32;4],b:[i32;4],c:[i32;4],d:[i32;4],bias:i32,walsh:bool,limit:i32) -> (r:[[i32;4];4])
+Ran 2 tests in 12.433s
+OK
+Ran 1 test in 7.175s
+OK
+Ran 1 test in 1.362s
+OK
+Ran 1 test in 7.434s
+OK

@@ -1,0 +1,1 @@
+{"test":{"exit":0,"wall_seconds":328.77,"rust_tests_passed":73},"compat":{"exit":0,"wall_seconds":70.65},"sanitize":{"exit":0,"wall_seconds":116.87},"fuzz":{"exit":0,"wall_seconds":0.37},"fixtures":{"exit":0}}

@@ -1,0 +1,15 @@
+w16-strips1 block 1 {"baseline": 0.0212141468, "prefix": 0.0323250678, "bulk": 0.0322319929, "original": 0.032405598300000005, "final": 0.0211517853}
+w16-strips64 block 1 {"baseline": 0.896297868, "prefix": 1.56869428, "bulk": 1.54447074, "original": 1.5629336200000001, "final": 0.8873724599999999}
+w64-strips1 block 2 {"baseline": 0.0293301485, "prefix": 0.0339775883, "bulk": 0.034814618199999994, "original": 0.034764975899999995, "final": 0.0283106469}
+w64-strips64 block 2 {"baseline": 1.33942909, "prefix": 1.71529873, "bulk": 1.7317846200000002, "original": 1.73441577, "final": 1.33689359}
+w256-strips1 block 2 {"baseline": 0.0335768672, "prefix": 0.039074146399999996, "bulk": 0.0408259272, "original": 0.0412982471, "final": 0.0334499007}
+w256-strips64 block 2 {"baseline": 1.65951212, "prefix": 1.97161782, "bulk": 2.0976715, "original": 2.09149074, "final": 1.62049976}
+w1024-strips1 block 2 {"baseline": 0.055935847399999995, "prefix": 0.058239488, "bulk": 0.06608455869999999, "original": 0.0657264513, "final": 0.056033245}
+w1024-strips64 block 2 {"baseline": 3.03720138, "prefix": 3.08942311, "bulk": 3.6597498799999997, "original": 3.69498646, "final": 3.11171986}
+w4096-strips1 block 2 {"baseline": 0.151993666, "prefix": 0.128184133, "bulk": 0.16057396, "original": 0.157883304, "final": 0.14615720100000001}
+w4096-strips64 block 2 {"baseline": 9.1987092, "prefix": 7.61142388, "bulk": 9.35008732, "original": 9.386573949999999, "final": 8.82805934}
+empty-fixed-0 block 1 {"baseline": 0.0209277143, "prefix": 0.0323200145, "bulk": 0.0321390356, "original": 0.0321667674, "final": 0.0205689837}
+empty-fixed-8 block 1 {"baseline": 0.10386141800000001, "prefix": 0.200324648, "bulk": 0.20148534099999998, "original": 0.198740125, "final": 0.100237962}
+empty-fixed-64 block 1 {"baseline": 0.669453754, "prefix": 1.36362696, "bulk": 1.3544843899999999, "original": 1.3739087700000001, "final": 0.6421948789999999}
+empty-dynamic-8 block 2 {"baseline": 0.17311053599999998, "prefix": 0.306022509, "bulk": 0.307136391, "original": 0.30552927, "final": 0.166450905}
+empty-dynamic-64 block 2 {"baseline": 1.19352093, "prefix": 2.17885429, "bulk": 2.1877965600000002, "original": 2.1908522400000003, "final": 1.16703813}

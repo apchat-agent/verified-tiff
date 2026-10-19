@@ -1,0 +1,15 @@
+# Selected outcome lines from archived full log; not a complete transcript.
+# Historical failures remain failures; run-3/fix receipts supersede earlier attempts.
+48 | fn pass4(a:[i32;4],b:[i32;4],c:[i32;4],d:[i32;4],bias:i32,walsh:bool,limit:i32) -> (r:[[i32;4];4])
+48 | fn pass4(a:[i32;4],b:[i32;4],c:[i32;4],d:[i32;4],bias:i32,walsh:bool,limit:i32) -> (r:[[i32;4];4])
+Ran 18 tests in 87.710s
+OK
+Ran 11 tests in 25.592s
+OK
+Ran 12 tests in 31.939s
+OK
+C API: metadata/varargs, directory rollback, buffer frames, fd/callback ownership, limits, stubs, TLS and utilities passed
+Ran 11 tests in 36.412s
+OK
+Traceback (most recent call last):
+Traceback (most recent call last):
