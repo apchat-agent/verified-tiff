@@ -52,8 +52,13 @@ Build with `bash fuzz-c/build.sh`; outputs land in `target/fuzz-c/`:
   in one process, then compares `TIFFReadRGBAImage` output and every decoded
   strip/tile segment byte-for-byte. JPEG and OJPEG are excluded from
   comparison: no universal numerical bound is documented for them (see
-  `docs/trusted-boundary.md`). Run it with the same libFuzzer arguments as
-  above over a corpus of valid and malformed TIFFs.
+  `docs/trusted-boundary.md`). Two further classes are counted, not compared,
+  because the documented policies diverge by design: decodes where either
+  engine reported a message (malformed-input recovery, see `docs/fax.md`),
+  and complex 16/32/64-bit sample transport on byte-swapped files (the
+  adapter reverses per component, `docs/reader-features.md`, while libtiff
+  swaps the whole word). Run it with the same libFuzzer arguments as above over a
+  corpus of valid and malformed TIFFs.
 
 Instrumentation scope: the Rust capi is built with sancov instrumentation,
 while ASan/UBSan stay C-side, as in the repo's own sanitizer runs. The

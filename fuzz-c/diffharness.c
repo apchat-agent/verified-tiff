@@ -3,7 +3,9 @@
  * linked). Outputs are compared byte-for-byte only when neither engine
  * reported a decode message: on malformed streams the documented recovery
  * policies differ (docs/fax.md fills no damaged rows; docs/profile.md is
- * stricter than libtiff), so those decodes are counted, not compared.
+ * stricter than libtiff), so those decodes are counted, not compared. The
+ * same applies to complex 16/32/64-bit sample transport on byte-swapped files
+ * (documented per-component adapter policy; docs/reader-features.md).
  * Exact comparisons exclude JPEG and OJPEG. */
 #include <assert.h>
 #include <dlfcn.h>
@@ -16,7 +18,8 @@
 
 #define GUARD 16
 #define MAX_INPUT (1u << 20)
-static uint64_t inputs, both_opened, compared, skipped_malformed, mismatches;
+static uint64_t inputs, both_opened, compared, skipped_malformed,
+    skipped_complex, mismatches;
 static int ref_msg, our_msg;
 static void ref_msg_handler(const char *mod, const char *fmt, va_list ap) {
   (void)mod; (void)fmt; (void)ap; ref_msg = 1;
@@ -25,10 +28,10 @@ static void our_msg_handler(const char *mod, const char *fmt, va_list ap) {
   (void)mod; (void)fmt; (void)ap; our_msg = 1;
 }
 static void counters(void) {
-  fprintf(stderr, "DIFF inputs=%llu both_opened=%llu compared=%llu skipped_malformed=%llu mismatches=%llu\n",
+  fprintf(stderr, "DIFF inputs=%llu both_opened=%llu compared=%llu skipped_malformed=%llu skipped_complex=%llu mismatches=%llu\n",
     (unsigned long long)inputs, (unsigned long long)both_opened,
     (unsigned long long)compared, (unsigned long long)skipped_malformed,
-    (unsigned long long)mismatches);
+    (unsigned long long)skipped_complex, (unsigned long long)mismatches);
 }
 
 struct memory {
@@ -143,10 +146,27 @@ static void check_guard(const uint8_t *p, size_t start) {
 }
 
 
-/* Per-input budgets bound allocation and total decoded bytes across directories. */
+/* Per-input budgets bound allocation and total decoded bytes across directories.
+ * Returns 1 when the segment's sample transport is a documented, intentional
+ * divergence from libtiff (complex SampleFormat 5/6 with 16/32/64-bit samples
+ * on byte-swapped files: the adapter reverses per component, preserving
+ * real/imaginary order per docs/reader-features.md, while libtiff 4.7.1
+ * swaps the whole sample word on directory reads), so byte comparison would
+ * be wrong. */
+static int documented_divergence(TIFF *ref) {
+  if (!TIFFIsByteSwapped(ref))
+    return 0;
+  uint16_t fmt = 0, bits = 1;
+  TIFFGetFieldDefaulted(ref, TIFFTAG_SAMPLEFORMAT, &fmt);
+  TIFFGetFieldDefaulted(ref, TIFFTAG_BITSPERSAMPLE, &bits);
+  return (fmt == SAMPLEFORMAT_COMPLEXINT || fmt == SAMPLEFORMAT_COMPLEXIEEEFP) &&
+         (bits == 16 || bits == 32 || bits == 64);
+}
+
 static void segments(TIFF *ref, TIFF *ours, size_t *left, size_t *segments_left) {
   int tiled = TIFFIsTiled(ref);
   if (tiled != vt_is_tiled(ours)) return;
+  if (documented_divergence(ref)) { skipped_complex++; return; }
   tmsize_t rn = tiled ? TIFFTileSize(ref) : TIFFStripSize(ref);
   tmsize_t on = tiled ? vt_tile_size(ours) : vt_strip_size(ours);
   uint32_t count = tiled ? TIFFNumberOfTiles(ref) : TIFFNumberOfStrips(ref);
