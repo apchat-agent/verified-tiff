@@ -100,8 +100,11 @@ impl Handle{
     }
     fn select_offset(&mut self,off:u64,page:u32,reset:bool)->R<()>{
         // Reserve fallibly before publishing either directory or walk history.
+        // Growth is geometric and capped at the directory-walk limit, so a
+        // long sequential walk stays linear in total copying.
         let n=if reset{1}else{self.visited.len()+1};
-        self.visited.reserve(n)?;
+        let cap=if reset{1}else{(self.visited.len()*2).max(16).max(n).min(self.limits.max_directories).max(n)};
+        self.visited.reserve(cap)?;
         let (data,meta)=metadata(&mut self.source,self.header,off,&self.limits,self.chop)?;
         if reset{self.visited.truncate(0);}
         self.visited.push(off)?;
