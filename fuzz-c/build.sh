@@ -8,10 +8,13 @@ cd "$TIFF_ROOT"
 out="$TIFF_ROOT/target/fuzz-c"
 mkdir -p "$out"
 compiler="${CC:-clang}"
+if [ "$(uname -s)" != Linux ] || [ "$(uname -m)" != x86_64 ]; then
+  echo "C fuzz builds support Linux x86-64 only" >&2; exit 1
+fi
 common=(-std=c11 -O1 -g -fno-omit-frame-pointer -Icompat -Icompat/include)
 export RUSTFLAGS=""
 RUSTFLAGS="--cfg fuzzing -Cpasses=sancov-module -Cllvm-args=-sanitizer-coverage-level=4 -Cllvm-args=-sanitizer-coverage-inline-8bit-counters -Cllvm-args=-sanitizer-coverage-pc-table -Cllvm-args=-sanitizer-coverage-trace-compares -Cdebug-assertions -Ccodegen-units=1" \
-  cargo +nightly build --locked --release -p verified-tiff-capi --target x86_64-unknown-linux-gnu
+  cargo +nightly-2026-10-18 build --locked --release -p verified-tiff-capi --target x86_64-unknown-linux-gnu
 unset RUSTFLAGS
 lib=target/x86_64-unknown-linux-gnu/release/libverified_tiff_capi.a
 bash scripts/build-compat.sh >"$out/build-compat.log" 2>&1
