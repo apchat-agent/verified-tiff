@@ -35,6 +35,11 @@ static int close_mem(thandle_t p) {
   ((struct memory *)p)->closed++;
   return 0;
 }
+static void pixel(TIFF *t, uint64_t off) {
+  unsigned char b=0;
+  assert(TIFFCurrentDirOffset(t)==off);
+  assert(TIFFReadEncodedStrip(t,0,&b,1)==1 && b==0xa5);
+}
 int main(int argc, char **argv) {
   assert(argc == 2);
   FILE *f = fopen(argv[1], "rb");
@@ -56,22 +61,30 @@ int main(int argc, char **argv) {
   TIFF *t = TIFFClientOpenExt("cycle", "r", &m, read_mem, NULL, seek_mem, close_mem,
                               size_mem, NULL, NULL, options);
   assert(t);
-  unsigned walks = 0;
-  for (;;) {
-    if (!TIFFReadDirectory(t))
-      break;
-    walks++;
-    if (walks > 16) {
-      fprintf(stderr, "cyclic directory walk did not terminate within 16 steps (%u)\n", walks);
-      TIFFClose(t);
-      TIFFOpenOptionsFree(options);
-      free(data);
-      return 1;
-    }
-  }
+  pixel(t,8);
+  assert(TIFFReadDirectory(t)); pixel(t,110);
+  assert(!TIFFReadDirectory(t));
+  assert(TIFFSetDirectory(t,0)); pixel(t,8);
+  assert(TIFFReadDirectory(t)); pixel(t,110);
+  assert(!TIFFReadDirectory(t));
+  assert(TIFFSetSubDirectory(t,8)); pixel(t,8);
+  assert(TIFFReadDirectory(t)); pixel(t,110);
+  TIFFClose(t);
+  /* Same two directories with an acyclic terminator. */
+  memset(data+208,0,4);
+  m.at=0;
+  t=TIFFClientOpenExt("acyclic","r",&m,read_mem,NULL,seek_mem,close_mem,
+                      size_mem,NULL,NULL,options);
+  assert(t); pixel(t,8);
+  assert(TIFFReadDirectory(t)); pixel(t,110);
+  assert(!TIFFReadDirectory(t));
+  assert(TIFFSetDirectory(t,0));
+  assert(TIFFReadDirectory(t)); pixel(t,110);
+  assert(TIFFSetSubDirectory(t,8));
+  assert(TIFFReadDirectory(t)); pixel(t,110);
   TIFFClose(t);
   TIFFOpenOptionsFree(options);
   free(data);
-  printf("cycle regression: directory walk terminated after %u steps\n", walks);
+  puts("cycle regression: exact progression, cycles, acyclic reselection, subdirectories OK");
   return 0;
 }
