@@ -93,9 +93,7 @@ fn check_page(image: &Raster) -> Result<(), Violation> {
     let mut scr_c = vec![PREFILL_A; scratch];
     let mut budget_c = Budget { remaining: work };
     let r_c = image.decode_with_scratch(&mut out_c, &mut scr_c, &mut budget_c);
-    for r in [&r_a, &r_b, &r_c] {
-        if !check_error_not_partial(r.is_ok(), true) { return Err(Violation::PartialSuccess); }
-    }
+    if r_a.is_err() || r_b.is_err() || r_c.is_err() { return Err(Violation::PartialSuccess); }
     if !check_decoded_length(&out_a, &out_b, olen) { return Err(Violation::DecodedLength); }
     if !check_identical(&out_a, &out_c, olen) { return Err(Violation::NonDeterministic); }
     if !check_frame(&out_a, PREFILL_A, olen) || !check_frame(&out_b, PREFILL_B, olen)
