@@ -185,3 +185,23 @@ inner run preserves overlapping/ring-wrapped history, checksum updates, output
 suffixes and two-unit charging. Completion, control transitions, output-cap
 failures and input-window refill behavior retain the original batch model. This
 is scalar run specialization, not an unchecked bulk copy.
+
+## Huffman prefix lookup
+
+Each successfully constructed Huffman table now builds a 256-entry `u16`
+prefix table from the original canonical decoder. Entries pack the symbol and
+its consumed length for codes of one through eight bits; zero entries select
+the canonical fallback. Reads with fewer than three source bytes also retain
+the original short-tail reader. Tree validation, long-code decoding and exact
+stream acceptance are unchanged.
+
+The `symbol_prefix` lemma proves that any successful canonical decode depends
+only on its consumed bits, including for incomplete or oversubscribed models.
+`prefix_table` proves every generated entry against that model, and
+`prefix_lookup` connects the buffered input bits and consumed position to the
+same symbol. No assumption, external body, allocation or alternate runtime
+implementation is added. The cache adds 512 declared bytes per Huffman table
+(1,024 for the cursor's two persistent tables); compiled stack size is not
+claimed. Two additional negative gates corrupt cache construction and cached
+lookup output. The single-code regression checks lookahead into a following
+block, unused prefixes, and incomplete/oversubscribed tree rejection.

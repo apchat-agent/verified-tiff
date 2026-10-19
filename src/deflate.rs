@@ -270,7 +270,7 @@ impl Cursor {
         assert forall|i:int| 0<=i<16 implies counts@[i]==number(lens@,i,288) by {
             zero_number(i,288);
         }
-        let blank=Huff {lens,counts,offsets:[0usize;16],symbols:[0u16;288]};
+        let blank=Huff {lens,counts,offsets:[0usize;16],symbols:[0u16;288],prefix:[0u16;256]};
         assert(counts@==huff(lens@).counts);
         assert(blank.model()==huff(Seq::new(288,|i:int|0u8)));
         let history=Ghost(Seq::empty());
@@ -405,3 +405,4 @@ proof fn stored_stream_witness()
 }
 
 }
+

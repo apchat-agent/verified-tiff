@@ -1,5 +1,12 @@
 # Proof ledger
 
+The Deflate prefix lookup verifies table construction and cached symbol/bit
+consumption against the unchanged canonical model, with an input-prefix
+congruence lemma that also covers malformed tree models. Its whole-crate run
+verifies 1,815 obligations with zero errors. The full gate includes two new
+cache-entry/lookup negative checks and all previous checks. Receipts are in
+`evidence/deflate-inflate/prefix/`; see [deflate.md](deflate.md#huffman-prefix-lookup).
+
 The [C shim coverage pass](c-shim-hardening.md) leaves all checked core sources and trusted-boundary sources unchanged. It adds C hardening and complete measured C function/line/branch coverage; the 1,806-obligation core proof is reused by exact source-hash match.
 
 

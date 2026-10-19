@@ -46,8 +46,9 @@ acceptance proofs. Preserve the missing-EOL and duplicate-endpoint policies in
    are now implemented. The earlier Deflate/LERC pass recorded two small-strip
    regressions; its original measurements remain in `reader-optimization.md`.
    Large RGB Deflate and LERC are substantially faster but still trail libtiff.
-   Remaining work includes reusable Huffman prefix tables, bulk Deflate
-   stored/match loops, packed bilevel expansion and adapter allocation/replay.
+   Reusable Huffman prefix tables are implemented; see `deflate.md`.
+   Remaining work includes bulk Deflate stored/match loops, packed bilevel
+   expansion and adapter allocation/replay.
    Retain all semantic/acceptance contracts and benchmark each change: a tested
    JPEG speculative lookahead implementation was removed because it regressed
    textured images. Do not trade exact JPEG output for faster approximate math.

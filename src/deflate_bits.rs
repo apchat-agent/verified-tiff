@@ -152,14 +152,22 @@ proof fn ranked_absent(l:Seq<u8>,v:int,r:int,start:nat)
     }
     reveal_with_fuel(ranked,1);reveal_with_fuel(number,1);
 }
+// Zero means fallback. Nonzero entries pack a symbol and its 1..8 bit length.
+pub(super) open spec fn prefix_entry(h:HModel,key:u8) -> u16 {
+    let r=symbol(seq![key,0u8,0u8],0,3,h,1,0,0);
+    if r.is_some() && 0<=r.unwrap().0<288 && 1<=r.unwrap().1<=8 {
+        (16*r.unwrap().0+r.unwrap().1) as u16
+    } else {0u16}
+}
 #[derive(Clone,Copy)]
 pub(super) struct Huff {
     pub lens:[u8;288],pub counts:[usize;16],
-    pub offsets:[usize;16],pub symbols:[u16;288],
+    pub offsets:[usize;16],pub symbols:[u16;288],pub prefix:[u16;256],
 }
 impl Huff {
     pub(super) open spec fn model(self) -> HModel {HModel {lens:self.lens@,counts:self.counts@}}
     pub(super) open spec fn valid(self) -> bool {
+        &&& forall|i:int| 0<=i<256 ==> self.prefix@[i]==0 || self.prefix@[i]==prefix_entry(self.model(),i as u8)
         &&& forall|i:int| 0<=i<16 ==> self.counts@[i]==number(self.lens@,i,288)
         &&& forall|i:int| 1<=i<16 ==> self.offsets@[i] as int+self.counts@[i]<=288
         &&& forall|i:int,r:int| 1<=i<16 && 0<=r<self.counts@[i] ==>
@@ -204,9 +212,35 @@ impl Huff {
         // A one-symbol length-one alphabet is the permitted incomplete tree.
         if left!=0 && (strict || (counts[0]!=288 && !(counts[0]==287 && counts[1]==1))) {return Err(Error::Invalid);}
         let (offsets,symbols)=ordered(lens,counts);
-        let out=Self {lens,counts,offsets,symbols};
+        let mut out=Self {lens,counts,offsets,symbols,prefix:[0u16;256]};
+        let prefix=out.prefix_table();out.prefix=prefix;
         assert(out.model()==huff(lens@)) by {assert(counts@==huff(lens@).counts);}
         Ok(out)
+    }
+    // Build once from the unchanged canonical decoder. Short entries are
+    // complete, while long codes and invalid prefixes retain the scalar walk.
+    fn prefix_table(&self) -> (table:[u16;256])
+        requires self.valid(),
+        ensures forall|i:int| 0<=i<256 ==> table@[i]==prefix_entry(self.model(),i as u8),
+    {
+        let mut table=[0u16;256];let mut key=0usize;
+        while key<256
+            invariant key<=256,self.valid(),
+                forall|i:int| key<=i<256 ==> table@[i]==0,
+                forall|i:int| 0<=i<key ==> table@[i]==prefix_entry(self.model(),i as u8),
+            decreases 256-key,
+        {
+            let wire=[key as u8,0u8,0u8];let mut bits=Bits {at:0,bit:0,end:3};
+            assert(wire@==seq![key as u8,0u8,0u8]);
+            let r=self.read_window(&wire,&mut bits);
+            if let Ok(found)=r {
+                let n=bits.at*8+bits.bit;
+                if n<=8 {table[key]=(found*16+n) as u16;}
+            }
+            assert(table@[key as int]==prefix_entry(self.model(),key as u8));
+            key=key+1;
+        }
+        table
     }
     pub(super) fn find(&self,len:usize,rank:usize) -> (r:Result<usize,Error>)
         requires self.valid(),1<=len<=15,
@@ -278,20 +312,63 @@ pub(super) open spec fn symbol(s:Seq<u8>,p:int,end:int,h:HModel,n:nat,code:int,f
         } else {symbol(s,p+1,end,h,n+1,c,2*(first+count))}
     }
 }
+proof fn symbol_progress(s:Seq<u8>,p:int,end:int,h:HModel,n:nat,code:int,first:int)
+    ensures symbol(s,p,end,h,n,code,first).is_some() ==> symbol(s,p,end,h,n,code,first).unwrap().1>p,
+    decreases 16-n,
+{
+    reveal_with_fuel(symbol,1);
+    if n>0 && n<=15 && p<end*8 {
+        let c=2*code+field(s,p,1);let count=h.counts[n as int] as int;
+        if !(first<=c<first+count) {symbol_progress(s,p+1,end,h,n+1,c,2*(first+count));}
+    }
+}
 // A successful canonical decode depends only on its consumed prefix, even for
 // incomplete/oversubscribed models. Construction retains tree_ok unchanged.
 proof fn symbol_prefix(s:Seq<u8>,p:int,end:int,t:Seq<u8>,q:int,tend:int,
     h:HModel,n:nat,code:int,first:int,limit:nat)
     requires limit>0,p+limit<=end*8,q+limit<=tend*8,
-        forall|i:int| 0<=i<limit ==> #[trigger] field(s,p+i,1)==field(t,q+i,1),
+        forall|i:int| p<=i<p+limit ==> #[trigger] field(s,i,1)==field(t,q+i-p,1),
         symbol(t,q,tend,h,n,code,first).is_some(),
         symbol(t,q,tend,h,n,code,first).unwrap().1<=q+limit,
     ensures symbol(s,p,end,h,n,code,first)==Some((
         symbol(t,q,tend,h,n,code,first).unwrap().0,
         p+symbol(t,q,tend,h,n,code,first).unwrap().1-q)),
     decreases 16-n,
-{}
+{
+    reveal_with_fuel(symbol,1);
+    assert(1<=n<=15);
+    assert(field(s,p,1)==field(t,q,1));
+    let c=2*code+field(t,q,1);let count=h.counts[n as int] as int;
+    if !(first<=c<first+count) {
+        symbol_progress(t,q+1,tend,h,n+1,c,2*(first+count));
+        assert(limit>1);
+        assert forall|i:int| p+1<=i<p+limit implies
+            #[trigger] field(s,i,1)==field(t,q+1+i-(p+1),1) by {
+            assert(field(s,i,1)==field(t,q+i-p,1));
+        }
+        symbol_prefix(s,p+1,end,t,q+1,tend,h,n+1,c,2*(first+count),(limit-1) as nat);
+    }
+}
 
+proof fn prefix_lookup(s:Seq<u8>,at:int,skip:u32,end:int,h:HModel,key:u8)
+    requires 0<=at,at+3<=end<=s.len(),skip<8,
+        key as u32==crate::bit_window::extract(crate::bit_window::word(s[at],s[at+1],s[at+2],false),skip,8,false),
+        prefix_entry(h,key)!=0,
+    ensures 1<=prefix_entry(h,key)%16<=8,prefix_entry(h,key)/16<288,
+        symbol(s,at*8+skip,end,h,1,0,0)==Some((prefix_entry(h,key) as int/16,at*8+skip+prefix_entry(h,key) as int%16)),
+{
+    let t=seq![key,0u8,0u8];
+    assert(crate::bit_window::extract(crate::bit_window::word(key,0,0,false),0,8,false)==key as u32) by(bit_vector);
+    assert forall|i:int| at*8+skip<=i<at*8+skip+8 implies
+        #[trigger] field(s,i,1)==field(t,i-(at*8+skip),1) by {
+        let k=(i-(at*8+skip)) as u32;
+        crate::bit_window::digit(s,at,skip,8,k);
+        crate::bit_window::digit(t,0,0,8,k);
+    }
+    symbol_prefix(s,at*8+skip,end,t,0,3,h,1,0,0,8);
+    let r=symbol(t,0,3,h,1,0,0).unwrap();
+    vstd::arithmetic::div_mod::lemma_fundamental_div_mod_converse(16*r.0+r.1,16,r.0,r.1);
+}
 impl Huff {
     #[inline(always)]
     pub(super) fn read(&self,s:&[u8],bits:&mut Bits) -> (r:Result<usize,Error>)
@@ -302,7 +379,22 @@ impl Huff {
             r.is_ok() ==> (r.unwrap() as int,final(bits).pos())==symbol(s@,old(bits).pos(),old(bits).end as int,self.model(),1,0,0).unwrap(),
             r.is_ok() ==> r.unwrap()<288 && final(bits).pos()>old(bits).pos(),
     {
-        if bits.end-bits.at>=3 {return self.read_window(s,bits);}
+        if bits.end-bits.at>=3 {
+            let at=bits.at;let skip=bits.bit;
+            let key=crate::bit_window::read(s,at,skip,8,false);
+            let entry=self.prefix[key];
+            if entry!=0 {
+                let n=(entry%16) as usize;let found=(entry/16) as usize;
+                proof {
+                    crate::bit_window::model(s@,at as int,skip as u32,8,false);
+                    prefix_lookup(s@,at as int,skip as u32,bits.end as int,self.model(),key as u8);
+                    quotient_remainder((skip+n) as int,8);
+                }
+                bits.at=at+(skip+n)/8;bits.bit=(skip+n)%8;
+                return Ok(found);
+            }
+            return self.read_window(s,bits);
+        }
         let mut n=1usize;let mut code=0usize;let mut first=0usize;
         while n<=15
             invariant 1<=n<=16,self.valid(),bits.valid(s@),bits.end==old(bits).end,
@@ -371,3 +463,4 @@ impl Huff {
 
 }
 }
+

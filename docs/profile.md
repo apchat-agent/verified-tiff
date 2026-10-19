@@ -366,3 +366,10 @@ whole-crate run has 1,809 verified obligations and zero errors. The counting
 contract does not turn C varargs, schema extraction or directory publication
 into end-to-end verified behavior; those remain covered by integration and
 sanitizer tests. All emitted C function/line/branch coverage remains 100%.
+
+## Deflate prefix lookup
+
+The fixed-size Huffman prefix table refines the original canonical decoder.
+It preserves oversubscribed/incomplete-tree rejection, the single-code and
+empty-distance exceptions, short tails, stream checksums, exact pixels and
+conservative work quotas. See [deflate.md](deflate.md#huffman-prefix-lookup).
