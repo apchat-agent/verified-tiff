@@ -157,7 +157,7 @@ impl Inflater {
                 forall|k:int|write<=k<output.len() ==> output@[k]==old(output)@[k],
             decreases left,
         {
-            if c.left>1 && write-written>1 && left>1 && c.produced<self.cap &&
+            if c.left>=16 && write-written>=16 && left>=16 && c.produced<self.cap &&
                 ((c.mode==1 && c.bits.bit==0 && c.bits.at<c.bits.end) ||
                  (c.mode==3 && c.distance>0 && c.distance<=c.produced && c.distance<=c.window)) {
                 c.reduce_checksum(s,self.cap);

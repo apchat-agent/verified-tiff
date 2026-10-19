@@ -188,9 +188,10 @@ is scalar run specialization, not an unchecked bulk copy.
 
 ## Huffman prefix lookup
 
-Each successfully constructed Huffman table now builds a 256-entry `u16`
-prefix table from the original canonical decoder. Entries pack the symbol and
-its consumed length for codes of one through eight bits; zero entries select
+Each successfully constructed literal/length or distance Huffman table with a
+code of at most four bits builds a bounded 32-entry `u16` prefix table from the
+original canonical decoder. Code-length trees skip this cache. Entries pack the symbol and
+its consumed length for codes of one through five bits; zero entries select
 the canonical fallback. Reads with fewer than three source bytes also retain
 the original short-tail reader. Tree validation, long-code decoding and exact
 stream acceptance are unchanged.
@@ -200,8 +201,8 @@ only on its consumed bits, including for incomplete or oversubscribed models.
 `prefix_table` proves every generated entry against that model, and
 `prefix_lookup` connects the buffered input bits and consumed position to the
 same symbol. No assumption, external body, allocation or alternate runtime
-implementation is added. The cache adds 512 declared bytes per Huffman table
-(1,024 for the cursor's two persistent tables); compiled stack size is not
+implementation is added. The cache adds 64 declared bytes per Huffman table
+(128 for the cursor's two persistent tables); compiled stack size is not
 claimed. Two additional negative gates corrupt cache construction and cached
 lookup output. The single-code regression checks lookahead into a following
 block, unused prefixes, and incomplete/oversubscribed tree rejection.
@@ -237,7 +238,7 @@ additional negative gates corrupt the bulk ring copy, stored cursor and work
 charge, alongside all pre-existing gates. Recorded evidence is in
 `evidence/deflate-inflate/bulk/`.
 
-## Distance-two copy regression
+## Distance-two copy regression (historical eight-bit delivery)
 
 The gray16 Predictor 2 workload expands 2,097,152 bytes; an independent Deflate
 parser, cross-checked against Python zlib on every strip, attributes 1,849,824
@@ -271,3 +272,18 @@ The fresh full proof gate verifies 1,824 obligations with zero errors and reject
 all 134 negative mutations. Complete runtime, C, sanitizer and exact fixture
 checks pass. Cargo-mutants discovers no sites inside the selected Verus sources,
 so its zero result counts do not establish mutation coverage.
+
+
+## Small-strip setup review
+
+The original eight-bit table added 256 canonical walks to every tree, even
+short-lived dynamic code-length trees. A width/strip-count sweep demonstrated
+regressions on tiny fixed and short dynamic streams. The revised five-bit table
+caps setup at 32 walks and skips construction for code-length trees or if no code fits four bits. Longer
+codes retain the canonical decoder. Both complete and resumable batch paths require at least 16 pending bytes and
+transitions before selecting bulk copying; the resumable path also requires 16 output slots; ring/checksum boundaries can still
+shorten a selected run. Smaller requests retain scalar specialization.
+Models, acceptance, exact work and buffer contracts are unchanged. See
+[reproduction](../benchmarks/deflate-reproduce.md) and the fix evidence for all
+samples, including unsuccessful candidates; historical eight-bit results above
+are not measurements of this revised implementation.

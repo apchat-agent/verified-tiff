@@ -435,7 +435,7 @@ impl Cursor {
         assert forall|i:int| 0<=i<16 implies counts@[i]==number(lens@,i,288) by {
             zero_number(i,288);
         }
-        let blank=Huff {lens,counts,offsets:[0usize;16],symbols:[0u16;288],prefix:[0u16;256]};
+        let blank=Huff {lens,counts,offsets:[0usize;16],symbols:[0u16;288],prefix:[0u16;32]};
         assert(counts@==huff(lens@).counts);
         assert(blank.model()==huff(Seq::new(288,|i:int|0u8)));
         let history=Ghost(Seq::empty());
@@ -548,7 +548,7 @@ pub(super) fn process(s:&[u8],start:usize,count:usize,cap:usize,fuel:usize,outpu
             forall|k:int| write<=k<output.len() ==> output@[k]==old(output)@[k],
         decreases left,
     {
-        if c.left>1 && left>1 && c.produced<cap &&
+        if c.left>=16 && left>=16 && c.produced<cap &&
             ((c.mode==1 && c.bits.bit==0 && c.bits.at<c.bits.end) ||
              (c.mode==3 && c.distance>0 && c.distance<=c.produced && c.distance<=c.window)) {
             c.reduce_checksum(s,cap);

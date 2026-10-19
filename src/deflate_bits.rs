@@ -152,22 +152,22 @@ proof fn ranked_absent(l:Seq<u8>,v:int,r:int,start:nat)
     }
     reveal_with_fuel(ranked,1);reveal_with_fuel(number,1);
 }
-// Zero means fallback. Nonzero entries pack a symbol and its 1..8 bit length.
+// Zero means fallback. Nonzero entries pack a symbol and its 1..5 bit length.
 pub(super) open spec fn prefix_entry(h:HModel,key:u8) -> u16 {
     let r=symbol(seq![key,0u8,0u8],0,3,h,1,0,0);
-    if r.is_some() && 0<=r.unwrap().0<288 && 1<=r.unwrap().1<=8 {
+    if r.is_some() && 0<=r.unwrap().0<288 && 1<=r.unwrap().1<=5 {
         (16*r.unwrap().0+r.unwrap().1) as u16
     } else {0u16}
 }
 #[derive(Clone,Copy)]
 pub(super) struct Huff {
     pub lens:[u8;288],pub counts:[usize;16],
-    pub offsets:[usize;16],pub symbols:[u16;288],pub prefix:[u16;256],
+    pub offsets:[usize;16],pub symbols:[u16;288],pub prefix:[u16;32],
 }
 impl Huff {
     pub(super) open spec fn model(self) -> HModel {HModel {lens:self.lens@,counts:self.counts@}}
     pub(super) open spec fn valid(self) -> bool {
-        &&& forall|i:int| 0<=i<256 ==> self.prefix@[i]==0 || self.prefix@[i]==prefix_entry(self.model(),i as u8)
+        &&& forall|i:int| 0<=i<32 ==> self.prefix@[i]==0 || self.prefix@[i]==prefix_entry(self.model(),i as u8)
         &&& forall|i:int| 0<=i<16 ==> self.counts@[i]==number(self.lens@,i,288)
         &&& forall|i:int| 1<=i<16 ==> self.offsets@[i] as int+self.counts@[i]<=288
         &&& forall|i:int,r:int| 1<=i<16 && 0<=r<self.counts@[i] ==>
@@ -212,30 +212,34 @@ impl Huff {
         // A one-symbol length-one alphabet is the permitted incomplete tree.
         if left!=0 && (strict || (counts[0]!=288 && !(counts[0]==287 && counts[1]==1))) {return Err(Error::Invalid);}
         let (offsets,symbols)=ordered(lens,counts);
-        let mut out=Self {lens,counts,offsets,symbols,prefix:[0u16;256]};
-        let prefix=out.prefix_table();out.prefix=prefix;
+        let mut out=Self {lens,counts,offsets,symbols,prefix:[0u16;32]};
+        if !strict && (counts[1]>0 || counts[2]>0 || counts[3]>0 || counts[4]>0) {
+            let prefix=out.prefix_table();out.prefix=prefix;
+        }
         assert(out.model()==huff(lens@)) by {assert(counts@==huff(lens@).counts);}
         Ok(out)
     }
+    // Bound setup to 32 canonical walks. Code-length trees and trees without
+    // any code of at most four bits retain only the canonical decoder.
     // Build once from the unchanged canonical decoder. Short entries are
     // complete, while long codes and invalid prefixes retain the scalar walk.
-    fn prefix_table(&self) -> (table:[u16;256])
+    fn prefix_table(&self) -> (table:[u16;32])
         requires self.valid(),
-        ensures forall|i:int| 0<=i<256 ==> table@[i]==prefix_entry(self.model(),i as u8),
+        ensures forall|i:int| 0<=i<32 ==> table@[i]==prefix_entry(self.model(),i as u8),
     {
-        let mut table=[0u16;256];let mut key=0usize;
-        while key<256
-            invariant key<=256,self.valid(),
-                forall|i:int| key<=i<256 ==> table@[i]==0,
+        let mut table=[0u16;32];let mut key=0usize;
+        while key<32
+            invariant key<=32,self.valid(),
+                forall|i:int| key<=i<32 ==> table@[i]==0,
                 forall|i:int| 0<=i<key ==> table@[i]==prefix_entry(self.model(),i as u8),
-            decreases 256-key,
+            decreases 32-key,
         {
             let wire=[key as u8,0u8,0u8];let mut bits=Bits {at:0,bit:0,end:3};
             assert(wire@==seq![key as u8,0u8,0u8]);
             let r=self.read_window(&wire,&mut bits);
             if let Ok(found)=r {
                 let n=bits.at*8+bits.bit;
-                if n<=8 {table[key]=(found*16+n) as u16;}
+                if n<=5 {table[key]=(found*16+n) as u16;}
             }
             assert(table@[key as int]==prefix_entry(self.model(),key as u8));
             key=key+1;
@@ -352,20 +356,21 @@ proof fn symbol_prefix(s:Seq<u8>,p:int,end:int,t:Seq<u8>,q:int,tend:int,
 
 proof fn prefix_lookup(s:Seq<u8>,at:int,skip:u32,end:int,h:HModel,key:u8)
     requires 0<=at,at+3<=end<=s.len(),skip<8,
-        key as u32==crate::bit_window::extract(crate::bit_window::word(s[at],s[at+1],s[at+2],false),skip,8,false),
+        key<32,
+        key as u32==crate::bit_window::extract(crate::bit_window::word(s[at],s[at+1],s[at+2],false),skip,5,false),
         prefix_entry(h,key)!=0,
-    ensures 1<=prefix_entry(h,key)%16<=8,prefix_entry(h,key)/16<288,
+    ensures 1<=prefix_entry(h,key)%16<=5,prefix_entry(h,key)/16<288,
         symbol(s,at*8+skip,end,h,1,0,0)==Some((prefix_entry(h,key) as int/16,at*8+skip+prefix_entry(h,key) as int%16)),
 {
     let t=seq![key,0u8,0u8];
-    assert(crate::bit_window::extract(crate::bit_window::word(key,0,0,false),0,8,false)==key as u32) by(bit_vector);
-    assert forall|i:int| at*8+skip<=i<at*8+skip+8 implies
+    assert(crate::bit_window::extract(crate::bit_window::word(key,0,0,false),0,5,false)==key as u32) by(bit_vector) requires key<32;
+    assert forall|i:int| at*8+skip<=i<at*8+skip+5 implies
         #[trigger] field(s,i,1)==field(t,i-(at*8+skip),1) by {
         let k=(i-(at*8+skip)) as u32;
-        crate::bit_window::digit(s,at,skip,8,k);
-        crate::bit_window::digit(t,0,0,8,k);
+        crate::bit_window::digit(s,at,skip,5,k);
+        crate::bit_window::digit(t,0,0,5,k);
     }
-    symbol_prefix(s,at*8+skip,end,t,0,3,h,1,0,0,8);
+    symbol_prefix(s,at*8+skip,end,t,0,3,h,1,0,0,5);
     let r=symbol(t,0,3,h,1,0,0).unwrap();
     vstd::arithmetic::div_mod::lemma_fundamental_div_mod_converse(16*r.0+r.1,16,r.0,r.1);
 }
@@ -380,13 +385,14 @@ impl Huff {
             r.is_ok() ==> r.unwrap()<288 && final(bits).pos()>old(bits).pos(),
     {
         if bits.end-bits.at>=3 {
+            if self.prefix[0]==0 {return self.read_window(s,bits);}
             let at=bits.at;let skip=bits.bit;
-            let key=crate::bit_window::read(s,at,skip,8,false);
+            let key=crate::bit_window::read(s,at,skip,5,false);
             let entry=self.prefix[key];
             if entry!=0 {
                 let n=(entry%16) as usize;let found=(entry/16) as usize;
                 proof {
-                    crate::bit_window::model(s@,at as int,skip as u32,8,false);
+                    crate::bit_window::model(s@,at as int,skip as u32,5,false);
                     prefix_lookup(s@,at as int,skip as u32,bits.end as int,self.model(),key as u8);
                     quotient_remainder((skip+n) as int,8);
                 }
