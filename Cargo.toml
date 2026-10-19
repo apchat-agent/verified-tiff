@@ -19,6 +19,11 @@ path = "src/main.rs"
 name = "fuzz-smoke"
 path = "fuzz/smoke.rs"
 
+[[bin]]
+name = "fuzz-oracle"
+path = "fuzz/oracle_main.rs"
+required-features = ["mutation-oracle"]
+
 
 [dependencies]
 vstd = "=0.0.0-2026-10-04-0306"
@@ -26,6 +31,7 @@ verified-tiff-float = { path = "trusted-float" }
 verified-tiff-simd = { path = "trusted-simd" }
 
 [features]
+mutation-oracle = []
 force-scalar = ["verified-tiff-simd/force-scalar"]
 
 [package.metadata.verus]
