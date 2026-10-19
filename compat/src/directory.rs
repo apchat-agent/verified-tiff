@@ -73,7 +73,9 @@ pub fn raw_metadata(source:&mut Source,header:ct::Header,off:u64,l:&Limits,defer
 pub fn metadata(source:&mut Source,header:ct::Header,off:u64,l:&Limits,chop:bool)->R<(Buf<u8>,Meta)>{
     let mem=source.mem.clone();let le=header.little_endian;
     let (data,tags,next)=raw_metadata(source,header,off,l,true)?;
-    assemble(data,tags,off,next,le,l,chop,&mem)
+    let (data,mut m)=assemble(data,tags,off,next,le,l,chop,&mem)?;
+    maybe_chop(&mut m,&data,l,chop,source.len,&mem)?;
+    Ok((data,m))
 }
 /// Image-directory policy: validate the exact InkNames payload, never its
 /// extra storage terminator, and publish its actual count as NumberOfInks.
@@ -101,7 +103,7 @@ pub fn normalize_inks(data:&mut Buf<u8>,tags:&mut Buf<Tag>,le:bool,l:&Limits)->R
     if let Some(i)=existing{tags[i]=t;}else{tags.push(t)?;tags.sort_by_key(|t|t.key);}
     Ok(())
 }
-pub fn assemble(mut data:Buf<u8>,mut tags:Buf<Tag>,off:u64,next:u64,le:bool,l:&Limits,chop:bool,mem:&Mem)->R<(Buf<u8>,Meta)>{
+pub fn assemble(mut data:Buf<u8>,mut tags:Buf<Tag>,off:u64,next:u64,le:bool,l:&Limits,_chop:bool,mem:&Mem)->R<(Buf<u8>,Meta)>{
     normalize_inks(&mut data,&mut tags,le,l)?;
     for key in [256,257,259,262,266,274,277,278,284,317,322,323]{
         if find(&tags,key).is_some_and(|t|t.count!=1){return Err((INVALID,"scalar image field count"));}
@@ -125,19 +127,39 @@ pub fn assemble(mut data:Buf<u8>,mut tags:Buf<Tag>,off:u64,next:u64,le:bool,l:&L
     let map=small_array(&data,&tags,320,le,3*65536,&mem)?;
     let extra=small_array(&data,&tags,338,le,ch,&mem)?;
     let subifds=array(&data,&tags,330,le,l.max_directories,&mem)?;
-    let mut m=Meta{tags,off,next,le,width,height,ch,bits,format,photo,planar,rows,bw,bh,tiled,offsets,counts,map,extra,subifds,compression,predictor,orientation,fill};
-    if chop && !tiled && planar==1 && compression==1 && photo!=6 && count==1{
-        let row=m.row_bytes(width)?;let newrows=(8192/row).max(1);
-        if newrows<rows{
-            let n=(height-1)/newrows+1;
-            if n>l.max_segments{return Err((LIMIT,"chopped strip count limit"));}
-            let pos=m.offsets.values[0];let left=m.counts.values[0];let stride=product(row,newrows)? as u64;
-            m.offsets=Striles::generated(n,pos,stride,left,false,mem)?;
-            m.counts=Striles::generated(n,pos,stride,left,true,mem)?;
-            m.rows=newrows;m.bh=newrows.min(height);
-        }
-    }
+    let m=Meta{tags,off,next,le,width,height,ch,bits,format,photo,planar,rows,bw,bh,tiled,offsets,counts,map,extra,subifds,compression,predictor,orientation,fill};
     Ok((data,m))
+}
+
+/// Pinned libtiff 4.7.1 tif_dirread.c:7867-7929, read-only strip chop.
+/// Keep its byte-count-based large-array safeguard (including the upstream
+/// "offset = TIFFGetStrileByteCount" spelling), not a full-image coverage test.
+pub fn maybe_chop(m:&mut Meta,data:&[u8],l:&Limits,chop:bool,source_len:u64,mem:&Mem)->R<()>{
+    if !chop || m.tiled || m.planar!=1 || m.compression!=1 || m.offsets.len()!=1{return Ok(());}
+    let (block,row)=if m.photo==6 {
+        let (hs,vs)=if let Some(t)=find(&m.tags,530){
+            if t.count!=2{return Err((INVALID,"YCbCr subsampling count"));}
+            (value(data,t,0,m.le)? as usize,value(data,t,1,m.le)? as usize)
+        }else{(2,2)};
+        if !matches!(hs,1|2|4)||!matches!(vs,1|2|4){return Ok(());}
+        let bytes=if m.ch==3 {
+            product(product((m.width-1)/hs+1,hs*vs+2)?,m.bits)?.checked_add(7).ok_or((LIMIT,"row size overflow"))?/8
+        }else{product(m.row_bytes(m.width)?,vs)?};
+        (vs,bytes)
+    }else{(1,m.row_bytes(m.width)?)};
+    if row==0{return Ok(());}
+    let blocks=(8192/row).max(1);
+    let newrows=product(blocks,block)?;
+    if newrows>=m.rows{return Ok(());}
+    let n=(m.height-1)/newrows+1;
+    let pos=m.offsets.values[0];let left=m.counts.values[0];
+    let stride=product(row,blocks)? as u64;
+    if n>1_000_000 && (left>=source_len || stride>(source_len-left)/(n as u64-1)){return Ok(());}
+    if n>l.max_segments{return Err((LIMIT,"chopped strip count limit"));}
+    let offsets=Striles::generated(n,pos,stride,left,false,mem)?;
+    let counts=Striles::generated(n,pos,stride,left,true,mem)?;
+    m.offsets=offsets;m.counts=counts;m.rows=newrows;m.bh=newrows.min(m.height);
+    Ok(())
 }
 impl Meta{
     pub fn row_bytes(&self,width:usize)->R<usize>{let ch=if self.planar==2{1}else{self.ch};product(product(width,ch)?,self.bits)?.checked_add(7).map(|n|n/8).ok_or((LIMIT,"row size overflow"))}
@@ -167,7 +189,7 @@ impl Striles{
         if self.values.len()==self.n{return Ok(self.values[k]);}
         if let Some((off,stride,total,counts))=self.generated{
             let pos=(k as u64).checked_mul(stride).ok_or((LIMIT,"chopped offset overflow"))?.min(total);
-            return if counts{Ok(stride.min(total-pos))}else{add64(off,pos)};
+            return if counts{Ok(stride.min(total-pos))}else if pos==total{Ok(0)}else{add64(off,pos)};
         }
         if let Some((start,page))=&self.page{if k>=*start&&k-*start<page.len(){return Ok(page[k-*start]);}}
         let (off,w,le)=self.remote.ok_or((INVALID,"missing segment array"))?;
