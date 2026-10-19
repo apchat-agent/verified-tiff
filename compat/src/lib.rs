@@ -81,7 +81,7 @@ struct Meta{
 }
 struct Handle{
     source:Source,header:container::Header,data:Buf<u8>,meta:Meta,page:u32,limits:Limits,
-    work:usize,chain_steps:usize,stream:Option<stream::Cached>,cache:Option<(usize,Buf<u8>)>,rendered:Option<Buf<u8>>,jpeg_rgb:bool,logluv16:bool,chop:bool,converted:Buf<metadata::Converted>,directory_kind:u32,writing:bool,
+    work:usize,chain_steps:usize,visited:Buf<u64>,stream:Option<stream::Cached>,cache:Option<(usize,Buf<u8>)>,rendered:Option<Buf<u8>>,jpeg_rgb:bool,logluv16:bool,chop:bool,converted:Buf<metadata::Converted>,directory_kind:u32,writing:bool,
 }
 impl Handle{
     fn open(mut source:Source,output:usize,work:usize,flags:u32)->R<Self>{
@@ -92,10 +92,19 @@ impl Handle{
         let chop=flags&1!=0;
         let (data,meta)=if writing||flags&2!=0{empty_metadata(&source.mem,header)?}else{metadata(&mut source,header,header.first_ifd,&limits,chop)?};
         let converted=Buf::new(0,&source.mem)?;
-        Ok(Self{writing,converted,directory_kind:0,source,header,data,meta,page:0,limits,work,chain_steps:0,stream:None,cache:None,rendered:None,jpeg_rgb:false,logluv16:false,chop})
+        let mut visited=Buf::new(1,&source.mem)?;visited.push(meta.off)?;
+        Ok(Self{writing,converted,directory_kind:0,source,header,data,visited,meta,page:0,limits,work,chain_steps:0,stream:None,cache:None,rendered:None,jpeg_rgb:false,logluv16:false,chop})
     }
     fn set_offset(&mut self,off:u64,page:u32)->R<()>{
+        self.select_offset(off,page,true)
+    }
+    fn select_offset(&mut self,off:u64,page:u32,reset:bool)->R<()>{
+        // Reserve fallibly before publishing either directory or walk history.
+        let n=if reset{1}else{self.visited.len()+1};
+        self.visited.reserve(n)?;
         let (data,meta)=metadata(&mut self.source,self.header,off,&self.limits,self.chop)?;
+        if reset{self.visited.truncate(0);}
+        self.visited.push(off)?;
         self.converted=Buf::new(0,&self.source.mem)?;self.directory_kind=0;self.data=data;self.meta=meta;self.page=page;self.chain_steps=0;self.stream=None;self.cache=None;self.rendered=None;self.jpeg_rgb=false;self.logluv16=false;Ok(())
     }
     fn source_channels(&self)->R<usize>{Ok(self.meta.ch)}
@@ -328,8 +337,12 @@ pub unsafe extern "C" fn vt_read(p:*mut c_void,kind:u32,a:u32,b:u32,c:u32,d:u32,
 pub unsafe extern "C" fn vt_next(p:*mut c_void)->i32{
     guard(0,||{let h=handle(p)?;let off=h.meta.next;if off==0{return Ok(0);}
         if off==h.meta.off{return Err((40,"cyclic directory chain"));}
+        // Like libtiff's directory loop detection, a revisited offset ends the
+        // sequential walk instead of re-reading the same directories.
+        if h.visited.contains(&off){return Err((40,"cyclic directory chain"));}
         let steps=verified_tiff::adapter_bounds::directory_step(h.chain_steps,h.limits.max_directories).map_err(err)?;
-        let page=if h.meta.off==0{0}else{h.page.saturating_add(1)};h.set_offset(off,page)?;h.chain_steps=steps;Ok(1)})
+        let page=if h.meta.off==0{0}else{h.page.saturating_add(1)};h.select_offset(off,page,false)?;
+        h.chain_steps=steps;Ok(1)})
 }
 #[no_mangle]
 pub unsafe extern "C" fn vt_field(p:*mut c_void,key:u32,kind:*mut u16,count:*mut usize)->*const u8{
