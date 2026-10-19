@@ -69,7 +69,8 @@ static int exercise_directory(TIFF *t) {
   if (TIFFIsTiled(t)) {
     tmsize_t n = TIFFTileSize(t);
     uint32_t count = TIFFNumberOfTiles(t);
-    if (n > 0 && n <= MAX_BUFFER && count > 0 && count <= 65536) {
+    if (n > 0 && n <= MAX_BUFFER && count > 0 && count <= 65536 &&
+        (uint64_t)n * count <= 64u << 20) {
       uint8_t *p = malloc((size_t)n + GUARD);
       assert(p);
       for (uint32_t i = 0; i < count; i++) {
@@ -85,7 +86,8 @@ static int exercise_directory(TIFF *t) {
   } else {
     tmsize_t n = TIFFStripSize(t);
     uint32_t count = TIFFNumberOfStrips(t);
-    if (n > 0 && n <= MAX_BUFFER && count > 0 && count <= 1048576) {
+    if (n > 0 && n <= MAX_BUFFER && count > 0 && count <= 1048576 &&
+        (uint64_t)n * count <= 64u << 20) {
       uint8_t *p = malloc((size_t)n + GUARD);
       assert(p);
       for (uint32_t i = 0; i < count; i++) {
@@ -130,7 +132,11 @@ static int run_input(const uint8_t *data, size_t size) {
   TIFF *t = TIFFClientOpenExt("fuzz", "r", &m, read_mem, NULL, seek_mem, close_mem,
                               size_mem, NULL, NULL, options);
   if (t) {
+    unsigned dirs = 0;
     do {
+      dirs++;
+      if (dirs > 100000)
+        abort();
       if (exercise_directory(t))
         errored = 1;
     } while (TIFFReadDirectory(t));
