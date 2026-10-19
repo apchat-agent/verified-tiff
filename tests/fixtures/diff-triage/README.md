@@ -11,3 +11,20 @@ units in `fuzz/README.md`). Each reproduces its class with
 - `both-failed-damaged-deflate.tif` — both_failed: a damaged Deflate stream
   that both engines refuse (libtiff "invalid literal/lengths set", the
   adapter "invalid TIFF input").
+<<<<<<< HEAD
+=======
+- `mismatch-corrupted-photometric-type.tif` — mismatches: a photometric tag
+  stored with type 13 (IFD8). libtiff rejects the wrongly typed known tag and
+  its RGBA path falls back to MINISBLACK without gray inversion
+  (tif_getimage.c:394-411, TIFFGetField unset), while the adapter honors the
+  documented policy of reading known tags independently of the file's stored
+  type (docs/metadata-contracts.md) and inverts for MINISWHITE. The
+  comparison domain is narrowed in the harness, not the adapter.
+>>>>>>> 780e1d0 (test: differential triage fixture for a corrupted photometric tag type (red))
+- `mismatch-corrupted-photometric-type.tif` — mismatches: a photometric tag
+  stored with type 13 (IFD8). libtiff rejects the wrongly typed known tag and
+  its RGBA path falls back to MINISBLACK without gray inversion
+  (tif_getimage.c:394-411, TIFFGetField unset), while the adapter honors the
+  documented policy of reading known tags independently of the file's stored
+  type (docs/metadata-contracts.md) and inverts for MINISWHITE. The
+  comparison domain is narrowed in the harness, not the adapter.
