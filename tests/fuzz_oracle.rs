@@ -107,7 +107,7 @@ fn inspection_budget_and_spent_arithmetic() {
 
 #[derive(Clone, Copy)]
 struct FakeRun { ok: bool, write: usize, charge: usize, break_out_frame: bool, break_scr_frame: bool }
-struct Fake { olen: usize, scratch: usize, work: usize, runs: [FakeRun; 5], at: Cell<usize> }
+struct Fake { olen: usize, scratch: usize, work: usize, runs: [FakeRun; 6], at: Cell<usize> }
 
 impl oracle::PageImage for Fake {
     fn output_len(&self) -> usize { self.olen }
@@ -118,19 +118,18 @@ impl oracle::PageImage for Fake {
         let i = self.at.get();
         self.at.set(i + 1);
         let run = &self.runs[i];
-        if !run.ok { return Err(Error::Limit); }
         for k in 0..run.write { output[k] = (k % 251) as u8 + 3; }
         if run.break_out_frame && run.write < output.len() { output[run.write] = 0xEE; }
         if run.break_scr_frame && !scratch.is_empty() { scratch[scratch.len() - 1] = 0xEE; }
         budget.remaining -= run.charge;
-        Ok(())
+        if run.ok { Ok(()) } else { Err(Error::Limit) }
     }
 }
 
 fn clean(olen: usize, scratch: usize, work: usize) -> Fake {
     let ok = FakeRun { ok: true, write: olen, charge: work, break_out_frame: false, break_scr_frame: false };
     let bad = FakeRun { ok: false, write: 0, charge: 0, break_out_frame: false, break_scr_frame: false };
-    Fake { olen, scratch, work, at: Cell::new(0), runs: [ok, ok, ok, bad, bad] }
+    Fake { olen, scratch, work, at: Cell::new(0), runs: [ok, ok, ok, bad, bad, bad] }
 }
 
 fn flagged(f: Fake, why: &str, want: oracle::Violation) {
@@ -196,3 +195,31 @@ fn fake_success_on_short_budget_is_flagged() {
     flagged(f, "success on short budget", oracle::Violation::PartialSuccess);
 }
 
+#[test]
+fn fake_undercharge_in_each_success_is_flagged() {
+    for i in 0..3 {
+        let mut f=clean(8,5,40); f.runs[i].charge=39;
+        flagged(f,"success undercharge",oracle::Violation::WorkExceeded);
+    }
+}
+#[test]
+fn fake_scratch_frame_in_each_padded_probe_is_flagged() {
+    for i in [0,1,3,4] {
+        let mut f=clean(8,5,40); f.runs[i].break_scr_frame=true;
+        flagged(f,"scratch frame",oracle::Violation::Framing);
+    }
+}
+#[test]
+fn fake_output_frame_on_errors_is_flagged() {
+    for i in [4,5] {
+        let mut f=clean(8,5,40);
+        f.runs[i].write=8; f.runs[i].break_out_frame=true;
+        flagged(f,"error output frame",oracle::Violation::Framing);
+    }
+}
+#[test]
+fn fake_success_on_short_scratch_is_flagged() {
+    let mut f=clean(8,5,40);f.runs[5].ok=true;
+    f.runs[5].write=8;f.runs[5].charge=40;
+    flagged(f,"short scratch accepted",oracle::Violation::PartialSuccess);
+}
