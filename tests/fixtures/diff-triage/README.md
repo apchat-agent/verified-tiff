@@ -18,6 +18,13 @@ units in `fuzz/README.md`). Each reproduces its class with
   documented policy of reading known tags independently of the file's stored
   type (docs/metadata-contracts.md) and inverts for MINISWHITE. The
   comparison domain is narrowed in the harness, not the adapter.
+- `libtiff-crash-second.tif` — a second, independent libtiff 4.7.1 crasher:
+  a plain libtiff consumer (open, TIFFGetField, TIFFReadRGBAImage,
+  TIFFReadEncodedStrip on the supported codec 1, TIFFReadDirectory) SEGVs in
+  TIFFReadDirectoryFindFieldInfo (tif_dirread.c:5256) on the next directory;
+  repro `target/fuzz-c/diff_decode tests/fixtures/diff-triage/libtiff-crash-second.tif -runs=1 -detect_leaks=0`.
+  The differential campaign therefore runs in libFuzzer fork mode with
+  -ignore_crashes=1 and triages every recorded artifact.
 - `mismatch-diverging-striles.tif` — mismatches: a tiled directory whose
   TileByteCounts value array is stored at offset 1. libtiff recovers with
   estimated counts and partially zero offsets (tif_dirread.c:5048-5064,
