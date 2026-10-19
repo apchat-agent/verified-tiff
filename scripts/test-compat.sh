@@ -55,3 +55,14 @@ python3 compat/tests/adapter_proofs.py
 python3 compat/tests/metadata_contracts.py
 
 bash scripts/test-shim-hardening.sh
+
+# Adapter fuzz regressions and the ordinary replay runner are also sanitizer gates.
+for regression in cycle chop; do
+  "$compiler" -std=c11 -O2 -g "${extra[@]}" -Icompat/include "compat/tests/${regression}_regression.c" -L"$output" -Wl,-rpath,"$output" -ltiff -o "$output/$regression-regression"
+done
+"$output/cycle-regression" tests/fixtures/fuzz-regressions-c/case-0003-cyclic-ifd.tif
+"$output/chop-regression"
+.tools/tiff-4.7.1/libtool --mode=link --tag=CC "$compiler" -std=c11 -O2 -DREFERENCE_LIB -I.tools/tiff-4.7.1/libtiff compat/tests/chop_regression.c .tools/tiff-4.7.1/libtiff/libtiff.la -o "$output/chop-libtiff"
+"$output/chop-libtiff"
+"$compiler" -std=c11 -O2 -g "${extra[@]}" -DREPLAY_MAIN -Icompat/include fuzz-c/harness.c -L"$output" -Wl,-rpath,"$output" -ltiff -o "$output/replay_c"
+"$output/replay_c" tests/fixtures/fuzz-regressions-c
