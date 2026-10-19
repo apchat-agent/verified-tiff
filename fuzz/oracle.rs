@@ -94,7 +94,11 @@ pub fn check_input(data: &[u8], limits: &Limits) -> Result<Summary, Violation> {
         };
         let before = inspection_budget(promised);
         let mut budget = Budget { remaining: before };
-        match inspect_raster(data, page, limits, &mut budget) {
+        let result=inspect_raster(data,page,limits,&mut budget);
+        if budget.remaining>before || !check_work_within(before-budget.remaining,promised) {
+            return Err(Violation::WorkExceeded);
+        }
+        match result {
             Err(_) => { summary.pages_rejected += 1; break; }
             Ok(image) => {
                 let spent = inspection_spent(before, budget.remaining);
@@ -113,37 +117,32 @@ pub fn check_page<I: PageImage>(image: &I) -> Result<(), Violation> {
     let olen = image.output_len();
     let scratch = image.scratch_len();
     let work = image.decode_work_limit();
-    let mut out_a = vec![PREFILL_A; olen + GUARD];
-    let mut scr_a = vec![PREFILL_A; scratch + GUARD];
-    let mut budget_a = Budget { remaining: work };
-    let r_a = image.decode_with_scratch(&mut out_a, &mut scr_a, &mut budget_a);
-    if r_a.is_ok() && budget_a.remaining != 0 { return Err(Violation::WorkExceeded); }
-    let mut out_b = vec![PREFILL_B; olen + GUARD];
-    let mut scr_b = vec![PREFILL_B; scratch + GUARD];
-    let mut budget_b = Budget { remaining: work };
-    let r_b = image.decode_with_scratch(&mut out_b, &mut scr_b, &mut budget_b);
-    let mut out_c = vec![PREFILL_A; olen];
-    let mut scr_c = vec![PREFILL_A; scratch];
-    let mut budget_c = Budget { remaining: work };
-    let r_c = image.decode_with_scratch(&mut out_c, &mut scr_c, &mut budget_c);
-    if r_a.is_err() || r_b.is_err() || r_c.is_err() { return Err(Violation::PartialSuccess); }
-    if !check_decoded_length(&out_a, &out_b, olen) { return Err(Violation::DecodedLength); }
-    if !check_identical(&out_a, &out_c, olen) { return Err(Violation::NonDeterministic); }
-    if !check_frame(&out_a, PREFILL_A, olen) || !check_frame(&out_b, PREFILL_B, olen)
-        || !check_frame(&scr_a, PREFILL_A, scratch) { return Err(Violation::Framing); }
-    let mut short = vec![PREFILL_A; olen.saturating_sub(1)];
-    let mut scr_short = vec![PREFILL_A; scratch + GUARD];
-    let mut budget_short = Budget { remaining: work };
-    let r_short = image.decode_with_scratch(&mut short, &mut scr_short, &mut budget_short);
-    if !check_error_not_partial(r_short.is_ok(), short.len() >= olen) {
-        return Err(Violation::PartialSuccess);
-    }
-    let mut out_d = vec![PREFILL_A; olen + GUARD];
-    let mut scr_d = vec![PREFILL_A; scratch + GUARD];
-    let mut budget_d = Budget { remaining: work.saturating_sub(1) };
-    let r_d = image.decode_with_scratch(&mut out_d, &mut scr_d, &mut budget_d);
-    if !check_error_not_partial(r_d.is_ok(), budget_d.remaining >= work) {
-        return Err(Violation::PartialSuccess);
-    }
+    // Every probe checks monotone budget, exact success charge and both frames.
+    // Short buffers have backing guards, but only their short prefixes are offered.
+    let probe = |out_len:usize,scr_len:usize,before:usize,prefill:u8|
+        -> Result<Vec<u8>,Violation> {
+        let mut out=vec![prefill; out_len+GUARD];
+        let mut scr=vec![prefill; scr_len+GUARD];
+        let mut budget=Budget{remaining:before};
+        let result=image.decode_with_scratch(&mut out[..out_len],&mut scr[..scr_len],&mut budget);
+        let sufficient=out_len>=olen && scr_len>=scratch && before>=work;
+        if result.is_ok()!=sufficient {return Err(Violation::PartialSuccess);}
+        if budget.remaining>before || (result.is_ok() && before-budget.remaining!=work) {
+            return Err(Violation::WorkExceeded);
+        }
+        if !check_frame(&out,prefill,olen.min(out_len)) ||
+           !check_frame(&scr,prefill,scratch.min(scr_len)) {
+            return Err(Violation::Framing);
+        }
+        Ok(out)
+    };
+    let a=probe(olen+GUARD,scratch+GUARD,work,PREFILL_A)?;
+    let b=probe(olen+GUARD,scratch+GUARD,work,PREFILL_B)?;
+    let c=probe(olen,scratch,work,PREFILL_A)?;
+    if !check_decoded_length(&a,&b,olen) {return Err(Violation::DecodedLength);}
+    if !check_identical(&a,&c,olen) {return Err(Violation::NonDeterministic);}
+    probe(olen.saturating_sub(1),scratch+GUARD,work,PREFILL_A)?;
+    probe(olen+GUARD,scratch+GUARD,work.saturating_sub(1),PREFILL_A)?;
+    if scratch>0 {probe(olen+GUARD,scratch-1,work,PREFILL_A)?;}
     Ok(())
 }
