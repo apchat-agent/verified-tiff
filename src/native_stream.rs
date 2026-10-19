@@ -24,6 +24,20 @@ pub(super) open spec fn batch(s:Seq<u8>,end:int,cap:int,v:Model,space:nat,fuel:n
     }
 }
 
+// Composing a run preserves the original batch semantics and exact fuel charge.
+pub(super) proof fn batch_run(s:Seq<u8>,end:int,cap:int,states:Seq<Model>,space:nat,fuel:nat,last:bool)
+    requires states.len()>0,states.len()-1<=space,states.len()-1<=fuel,
+        forall|i:int| 0<=i<states.len()-1 ==> {
+            &&& !batch_stop(s,states[i],(space-i) as nat,last)
+            &&& crate::deflate::transition(s,end,cap,states[i])==Some(states[i+1])
+            &&& states[i+1].bytes.len()==states[i].bytes.len()+1
+        },
+    ensures batch(s,end,cap,states[0],space,fuel,last)==
+        batch(s,end,cap,states.last(),(space-(states.len()-1)) as nat,(fuel-(states.len()-1)) as nat,last),
+    decreases states.len(),
+{
+}
+
 pub struct Inflater {cursor:Cursor,live:bool,cap:usize}
 impl Inflater {
     pub closed spec fn valid(&self)->bool {

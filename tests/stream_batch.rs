@@ -59,3 +59,26 @@ fn batch_rejection_preserves_suffix_and_handles_empty_output(){
     assert_eq!(decoder.pull(&wire,2,0,10,true,&mut out,0,&mut b),Ok((2,0,0,false)));assert_eq!(b.remaining,100);assert_eq!(out,[0xa5;8]);
     assert_eq!(decoder.pull(&wire,2,0,10,true,&mut out,8,&mut b),Ok((10,0,3,true)));assert_eq!(&out[..3],b"ABC");assert_eq!(&out[3..],&[0xa5;5]);
 }
+
+#[test]
+fn copy_runs_wrap_overlap_and_input_windows(){
+    let wire=include_bytes!("fixtures/copy-boundaries.zlib");
+    let mut expected:Vec<u8>=(0..=255).collect();expected.extend_from_slice(b"AB");
+    expected.extend_from_within(..258); // distance == length, nonconstant phrase
+    for _ in 0..125 {for _ in 0..258 {let byte=expected[expected.len()-256];expected.push(byte);}}
+    assert_eq!(expected.len(),32766);
+    let last=*expected.last().unwrap();expected.extend(std::iter::repeat_n(last,258)); // distance 1 across wrap
+    expected.extend_from_within(expected.len()-258..); // adjacent complete phrase
+    let (reference,charged)=batched(wire,expected.len(),65536,65536,2_000_000).unwrap();
+    assert_eq!(reference,expected);
+    for window in [1031,2048,65536] {for chunk in [1,257,32769] {
+        let (actual,work)=batched(wire,expected.len(),window,chunk,charged).unwrap();
+        assert_eq!(actual,expected);assert_eq!(work,charged);
+        assert_eq!(batched(wire,expected.len(),window,chunk,charged-1),Err(Error::Limit));
+    }}
+    let stored=include_bytes!("fixtures/stream-batch-stored.zlib");
+    let expected:Vec<u8>=(0..130001).map(|i|((i*73+(i/97)*19+i/4093)&255) as u8).collect();
+    for window in [2048,65536] {for chunk in [257,32769] {
+        assert_eq!(batched(stored,expected.len(),window,chunk,2_000_000).unwrap().0,expected);
+    }}
+}
